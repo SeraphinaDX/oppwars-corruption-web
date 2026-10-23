@@ -20,24 +20,27 @@ var levelThresholds = []int{1000, 4000, 9000, 18000, 30000, 60000, 120000, 24000
 // Player follows the names and starting values in the original Go program.
 // ClubShares replaces ownership of people in this initial browser adaptation.
 type Player struct {
-	Name         string `json:"name"`
-	Class        string `json:"class"`
-	HP           int    `json:"hp"`
-	Attack       int    `json:"attack"`
-	Money        int    `json:"money"`
-	Days         int    `json:"days"`
-	Experience   int    `json:"experience"`
-	Level        int    `json:"level"`
-	Condoms      int    `json:"condoms"`
-	Infections   int    `json:"infections"`
-	ClubShares   int    `json:"clubShares"`
-	Cocaine      int    `json:"cocaine"`
-	Fentanyl     int    `json:"fentanyl"`
-	LSD          int    `json:"lsd"`
-	ParagonRank  int    `json:"paragonRank"`
-	RenegadeRank int    `json:"renegadeRank"`
-	Bumfights    int    `json:"fightsLeft"`
-	ClassPower   int    `json:"classPower"`
+	Name               string `json:"name"`
+	Class              string `json:"class"`
+	HP                 int    `json:"hp"`
+	Attack             int    `json:"attack"`
+	Money              int    `json:"money"`
+	Days               int    `json:"days"`
+	Experience         int    `json:"experience"`
+	Level              int    `json:"level"`
+	Condoms            int    `json:"condoms"`
+	Infections         int    `json:"infections"`
+	ClubShares         int    `json:"clubShares"`
+	Cocaine            int    `json:"cocaine"`
+	Fentanyl           int    `json:"fentanyl"`
+	LSD                int    `json:"lsd"`
+	ParagonRank        int    `json:"paragonRank"`
+	RenegadeRank       int    `json:"renegadeRank"`
+	Bumfights          int    `json:"fightsLeft"`
+	ClassPower         int    `json:"classPower"`
+	CocaineEncounters  int    `json:"cocaineEncounters"`
+	FentanylEncounters int    `json:"fentanylEncounters"`
+	LSDEncounters      int    `json:"lsdEncounters"`
 }
 
 type Encounter struct {
@@ -140,6 +143,8 @@ func (g *Game) act(action, name, class string) error {
 			return g.buy(500, "fentanyl", 1)
 		case "buy_lsd":
 			return g.buy(100, "lsd", 5)
+		case "use_cocaine", "use_fentanyl", "use_lsd":
+			return g.useEffect(action)
 		case "buy_condoms":
 			if p.Money < 10 {
 				return errors.New("not enough cash")
@@ -149,6 +154,9 @@ func (g *Game) act(action, name, class string) error {
 			g.log("Bought a pack of five condoms for $10.")
 			return nil
 		case "buy_club":
+			if p.ClubShares >= maxClubShares {
+				return errors.New("venue investment limit reached (5 shares)")
+			}
 			if p.Money < 2000 {
 				return errors.New("not enough cash")
 			}
@@ -161,7 +169,7 @@ func (g *Game) act(action, name, class string) error {
 				return errors.New("not enough cash")
 			}
 			p.Money -= 100
-			p.HP += 200
+			p.restoreHP(200)
 			if p.Condoms > 0 {
 				p.Condoms--
 				g.log("Nightlife break completed safely. +200 HP.")
@@ -192,6 +200,9 @@ func (g *Game) act(action, name, class string) error {
 				return nil
 			}
 			p.Days--
+			if p.clearEffects() {
+				g.log("End of shift: all temporary effects have worn off.")
+			}
 			p.Bumfights = fightsPerDay
 			if p.Infections > 0 {
 				p.Bumfights = fightsPerDay - 15 - p.Infections
@@ -199,7 +210,7 @@ func (g *Game) act(action, name, class string) error {
 					p.Bumfights = 0
 				}
 			}
-			income := 500 + p.ClubShares*500 - p.Infections*25
+			income := p.shiftIncome()
 			p.Money += income
 			g.log(fmt.Sprintf("New shift: +$%d net income. %d days remaining.", income, p.Days))
 			return nil
@@ -217,11 +228,11 @@ func (g *Game) act(action, name, class string) error {
 			switch g.Event.Title {
 			case "THE EVIDENCE LOCKER":
 				p.Money += 500
-				p.Cocaine += 2
+				p.Cocaine = min(maxInventoryEach, p.Cocaine+2)
 			case "DEPARTMENT POLITICS":
 				p.Money += 1000
 			case "STREET INTELLIGENCE":
-				p.Fentanyl += 2
+				p.Fentanyl = min(maxInventoryEach, p.Fentanyl+2)
 			}
 			g.log("Renegade decision recorded. Captain Grimstead approves.")
 		} else {
@@ -239,21 +250,31 @@ func (g *Game) act(action, name, class string) error {
 		switch action {
 		case "retreat":
 			p.Bumfights--
+			for _, msg := range p.finishEncounter() {
+				g.log(msg + ".")
+			}
 			g.Enemy = nil
 			g.Phase = "hq"
 			g.log("You retreated to headquarters. One patrol encounter used.")
 			return nil
 		case "fight":
 			if rand.IntN(100) > 40 {
-				damage := p.Attack * p.Level
-				if p.Fentanyl > 0 {
-					damage = p.Attack + p.Attack*p.Fentanyl + p.Level*2
+				damage := p.normalDamage()
+				if p.LSDEncounters > 0 {
+					var distorted bool
+					damage, distorted = distortedDamage(damage, rand.IntN(100))
+					if distorted {
+						g.log("Reality bends: you strike a mirage. Your hit deals half damage.")
+					}
 				}
 				g.Enemy.HP -= damage
 				g.log(fmt.Sprintf("You strike for %d HP. The paperwork practically fills itself out.", damage))
+			} else if p.LSDEncounters > 0 && foresightDodge(rand.IntN(100)) {
+				g.log("Your altered perception spots the counterattack early. You dodge it!")
 			} else {
-				p.HP -= 20
-				g.log(fmt.Sprintf("You miss! The enemy hits you with %s for 20 HP.", attacks[rand.IntN(len(attacks))]))
+				hit := p.counterDamage()
+				p.HP -= hit
+				g.log(fmt.Sprintf("You miss! The enemy hits you with %s for %d HP.", attacks[rand.IntN(len(attacks))], hit))
 			}
 		case "special":
 			power := p.ClassPower
@@ -268,7 +289,16 @@ func (g *Game) act(action, name, class string) error {
 				label = "Charged Shot"
 			case "psychopath":
 				label = "Chow Down"
-				p.HP += damage / 2
+			}
+			if p.LSDEncounters > 0 {
+				var distorted bool
+				damage, distorted = distortedDamage(damage, rand.IntN(100))
+				if distorted {
+					g.log("You target a hallucination. Special damage is halved.")
+				}
+			}
+			if p.Class == "psychopath" {
+				p.restoreHP(damage / 2)
 			}
 			g.Enemy.HP -= damage
 			g.log(fmt.Sprintf("%s! %d damage dealt.", label, damage))
@@ -288,9 +318,11 @@ func (g *Game) act(action, name, class string) error {
 			g.Enemy = nil
 			g.Phase = "hq"
 			p.Bumfights--
-			// These unusual reward formulas intentionally match original main.go.
-			p.Money = p.Money*p.Level + 300
-			gained := p.Level*200 + p.Cocaine*100
+			// Flat rewards prevent exponential money and passive-inventory XP farming.
+			pay := p.victoryPay()
+			p.Money += pay
+			baseXP, bonusXP := p.earnedXP()
+			gained := baseXP + bonusXP
 			p.Experience += gained
 			oldLevel := p.Level
 			for i, threshold := range levelThresholds {
@@ -298,14 +330,17 @@ func (g *Game) act(action, name, class string) error {
 					p.Level = i + 2
 				}
 			}
-			g.log(fmt.Sprintf("Patrol won! +%d XP. Cash now $%d.", gained, p.Money))
+			g.log(fmt.Sprintf("Patrol won! +%d XP (%d bonus), +$%d.", gained, bonusXP, pay))
+			for _, msg := range p.finishEncounter() {
+				g.log(msg + ".")
+			}
 			if p.Level > oldLevel {
 				g.log(fmt.Sprintf("PROMOTION: level %d!", p.Level))
 			}
 			return nil
 		}
 		if p.Class == "psychic" {
-			p.ClassPower++
+			p.ClassPower = min(maxClassPower, p.ClassPower+1)
 		}
 		return nil
 	default:
@@ -318,10 +353,24 @@ func (g *Game) buy(price int, item string, units int) error {
 	if p.Money < price {
 		return errors.New("not enough cash")
 	}
-	p.Money -= price
 	if p.RenegadeRank >= 10 {
 		units *= 2
 	}
+	var owned int
+	switch item {
+	case "cocaine":
+		owned = p.Cocaine
+	case "fentanyl":
+		owned = p.Fentanyl
+	case "lsd":
+		owned = p.LSD
+	default:
+		return errors.New("unknown item")
+	}
+	if owned+units > maxInventoryEach {
+		return errors.New("property room inventory limit reached (20 per item)")
+	}
+	p.Money -= price
 	switch item {
 	case "cocaine":
 		p.Cocaine += units
@@ -338,12 +387,12 @@ func (g *Game) startEncounter() {
 	maxHP := 100 * p.Level
 	g.Enemy = &Encounter{Name: enemies[rand.IntN(len(enemies))], HP: maxHP, MaxHP: maxHP}
 	if p.Class == "psychic" {
-		p.ClassPower++
+		p.ClassPower = min(maxClassPower, p.ClassPower+1)
 	}
 	g.Phase = "combat"
 	g.log("Patrol encounter! You have a new incident to handle.")
 	if p.ParagonRank == 10 && rand.IntN(4) == 1 {
-		hit := 50 * p.Level
+		hit := min(50*p.Level, p.maxHP()/3)
 		p.HP -= hit
 		g.log(fmt.Sprintf("Captain Grimstead arranged a drive-by. You lost %d HP.", hit))
 		if p.HP <= 0 {
@@ -353,4 +402,39 @@ func (g *Game) startEncounter() {
 			g.EndReason = "You didn't survive the department's politics."
 		}
 	}
+}
+
+// useEffect spends one inventory unit and starts a short, non-stacking effect.
+// These fictional game mechanics do not describe real-world drug effects.
+func (g *Game) useEffect(action string) error {
+	p := &g.Player
+	if p.effectActive() {
+		return errors.New("an effect is already active — finish it before using another")
+	}
+	switch action {
+	case "use_cocaine":
+		if p.Cocaine == 0 {
+			return errors.New("no cocaine in inventory")
+		}
+		p.Cocaine--
+		p.CocaineEncounters = cocaineEncounters
+		g.log("XP Rush active: +25% patrol XP (up to +150) for 3 encounters.")
+	case "use_fentanyl":
+		if p.Fentanyl == 0 {
+			return errors.New("no fentanyl in inventory")
+		}
+		p.Fentanyl--
+		p.FentanylEncounters = fentanylEncounters
+		g.log("Reckless Strength active for 2 encounters: +25% normal attack damage, +5 retaliation damage.")
+	case "use_lsd":
+		if p.LSD == 0 {
+			return errors.New("no LSD in inventory")
+		}
+		p.LSD--
+		p.LSDEncounters = lsdEncounters
+		g.log("REALITY DISTORTION: the streetlights are giving a performance review. Two encounters remaining.")
+	default:
+		return errors.New("unknown effect")
+	}
+	return nil
 }

@@ -1,13 +1,12 @@
-# OPP Wars: Corruption — Web Edition v0.1.0
+# OPP Wars: Corruption — Web Edition v0.2.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
 ## Run
 
-Requires Go **1.23 or newer**. In your existing OPP Wars checkout, place this `web/` directory alongside `main.go`:
+Requires Go **1.23 or newer**. In this standalone fork, run from the repository root:
 
 ```sh
-cd web
 go run .
 ```
 
@@ -28,15 +27,26 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.1.0
+## What's in v0.2.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
 - Source-aligned starting stats: $5,000, 200 HP, 40 attack, 30 days, 25 patrols/day.
-- Original-like combat, rewards, XP thresholds, 1-in-6 random events, and Paragon/Renegade choices.
-- Property room with passive drug buffs and purchases; medical treatment; night-life recovery; daily economy.
+- Original-like combat, balanced rewards, XP thresholds, 1-in-6 random events, and Paragon/Renegade choices.
+- Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.2.0 balance and LSD
+
+- **LSD (Reality Distortion):** activate one tab at HQ for 2 completed patrol encounters; 25% chance to dodge a counterattack on a missed attack, 20% chance that a hit (including class specials) does half damage. During activation the skyline changes colour; animation honours reduced-motion settings.
+- **Cocaine (XP Rush):** one unit grants +25% XP on victory (capped at +150) for 3 encounters.
+- **Fentanyl (Reckless Strength):** one unit grants +25% normal attack damage, but enemy counterattacks inflict +5 HP, for 2 encounters.
+- Active effects do not stack, cannot be refreshed early, and end after their encounter count is used or when clocking out. Retreat counts as an encounter. Inventory max is 20 of each.
+- Money awarded per victory is **$300 + $75 per level above 1**, without multipliers on existing cash. Club shares max at 5, healing is capped by level (200 + 40 HP per level above 1; hard max 720), and Psychic charge caps at 4.
+- Old v0.1.0 JSON saves load normally. Quantities from legacy saves above shop caps remain in inventory until spent; you cannot buy beyond the cap.
+
+These are fictional game mechanics and aren't intended as depictions of real drug effects.
 
 ## Scope and compatibility
 
@@ -53,7 +63,6 @@ Differences in this first edition:
 ## Tests
 
 ```sh
-cd web
 go test ./...
 go test -race ./...
 ```

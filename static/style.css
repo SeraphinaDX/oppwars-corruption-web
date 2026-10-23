@@ -7,3 +7,22 @@
 @media(max-width:1050px){.layout{grid-template-columns:190px minmax(0,1fr)}.profile{grid-column:1/-1;border-left:0;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 30px}.profile .mini-title{grid-column:1/-1}.avatar{grid-row:2/span 2}.officer-name,.officer-class{text-align:left}.profile #vitals{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 25px}.brief{grid-column:1/-1}.content{padding:24px}}
 @media(max-width:620px){.app{margin:0;border-radius:0}.header{padding:17px;align-items:start;flex-wrap:wrap}.logo{font-size:27px}.tagline{font-size:8px}.connection{font-size:9px;padding:6px 10px}.layout{grid-template-columns:1fr}.sidebar{display:flex;flex-direction:row;flex-wrap:wrap;gap:5px;padding:10px;border-right:0;border-bottom:1px solid var(--border)}.sidebar .nav-heading,.sidebar-bottom{display:none}.nav-btn{width:auto;flex:1 1 125px;white-space:normal;margin:0;text-align:center;padding:10px 7px}.nav-btn span{display:none}.content{padding:17px}.classes{grid-template-columns:1fr}.classcard{display:grid;grid-template-columns:42px 1fr;text-align:left;gap:0 12px}.classcard .glyph{grid-row:span 2}.classcard small{margin-top:3px}.buttons{grid-template-columns:1fr}.full{grid-column:1}.profile{padding:18px}.scene{height:145px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* v0.2.0: restrained visual LSD effect, readable with reduced-motion enabled. */
+.effect-notice{border:1px solid #9c6cc4;border-radius:7px;background:linear-gradient(110deg,#312242,#173b47);margin:0 0 17px;padding:13px 15px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.effect-notice strong{font-size:12px;color:#f6b8ff;letter-spacing:.5px}
+.effect-notice span{font-size:11px;color:#9ef0ff}
+.effect-notice p{width:100%;margin:0;font-size:11px;color:#d0d6ed}
+.shop-item{border-bottom:1px solid #3a4962;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0}
+.shop-item:last-of-type{border-bottom:none}
+.shop-description{min-width:0;flex:1}
+.shop-description strong{color:#f9d4e6}
+.shop-description .hint{display:block;margin-top:4px}
+.shop-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.shop-actions .btn{min-width:86px}
+.lsd-active .scene{border-color:#a873d1;background:linear-gradient(120deg,#21324e,#3d265b 48%,#245765 76%,#2d1d3b 95%);animation:reality-shift 8s ease-in-out infinite alternate}
+.lsd-active .moon{box-shadow:0 0 30px #d689f2,0 0 65px #64dadb;background:#ddc9ff}
+.lsd-active .scene-badge{border-color:#c18fe0;color:#f3c0ff}
+@keyframes reality-shift{from{filter:hue-rotate(-12deg)}to{filter:hue-rotate(35deg)}}
+@media(max-width:620px){.shop-item{flex-direction:column;align-items:stretch}.shop-actions{justify-content:stretch}.shop-actions .btn{flex:1}}
+@media(prefers-reduced-motion:reduce){.lsd-active .scene{animation:none}}
