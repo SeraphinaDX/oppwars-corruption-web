@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0e18">
+  <meta name="description" content="OPP Wars: Corruption — a neon BBS-inspired browser RPG">
+  <title>OPP Wars: Corruption // Web Edition</title>
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="header">
+    <div class="brand"><div class="logo">OPP<span>//</span>WARS<span class="blink">_</span></div><div class="tagline">CORRUPTION <span>///</span> CERBERUS GAMES <span>///</span> WEB EDITION</div></div>
+    <div class="connection"><i></i> LOCAL CONNECTION <span class="edition">• v0.1.0</span></div>
+  </header>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Game navigation">
+      <div class="nav-heading">// TERMINAL MENU</div>
+      <button class="nav-btn active" data-panel="patrol"><span>01</span> ◈ STREET PATROL</button>
+      <button class="nav-btn" data-panel="hq"><span>02</span> ▣ HEADQUARTERS</button>
+      <button class="nav-btn" data-panel="property"><span>03</span> ◫ PROPERTY ROOM</button>
+      <button class="nav-btn" data-panel="nightlife"><span>04</span> ♧ RED ROOM</button>
+      <button class="nav-btn" data-panel="doctor"><span>05</span> ✚ MEDICAL WING</button>
+      <button class="nav-btn" data-panel="record"><span>06</span> ▤ OFFICER FILE</button>
+      <div class="sidebar-bottom"><div class="mini-title">ON-DUTY STATUS</div><div id="shift-status" class="shift-status">WAITING FOR OFFICER</div><p>Original BBS spirit.<br>New browser interface.</p></div>
+    </nav>
+    <main id="content" class="content" aria-live="polite"></main>
+    <aside class="profile" aria-label="Officer statistics">
+      <div class="mini-title">// PERSONNEL RECORD</div>
+      <div class="avatar">✦</div>
+      <div id="officer-name" class="officer-name">UNASSIGNED</div>
+      <div id="officer-class" class="officer-class">CLASS NOT SELECTED</div>
+      <div id="vitals"></div>
+      <div id="brief" class="brief"></div>
+    </aside>
+  </div>
+  <footer class="footer"><span>OPP WARS // A CERBERUS GAMES PROJECT</span><span>GPLv3 • FICTIONAL SATIRE • SINGLE-PLAYER</span></footer>
+</div>
+<div id="toast" class="toast" role="status" aria-live="assertive"></div>
+</body>
+</html>

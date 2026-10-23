@@ -1,0 +1,112 @@
+'use strict';
+// OPP Wars Web: The Go backend owns all game state. JavaScript only renders it.
+const state = { game: null, panel: 'patrol', picked: 'psychic', busy: false };
+const el = id => document.getElementById(id);
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n || 0).toLocaleString();
+const actionButton = (action, label, style = '', disabled = false) => `<button class="btn ${style}" data-action="${action}" ${disabled ? 'disabled' : ''}>${escapeHTML(label)}</button>`;
+const card = (title, body) => `<section class="card"><h2>${escapeHTML(title)}</h2>${body}</section>`;
+const heading = (eyebrow, title, description) => `<div class="kicker">${escapeHTML(eyebrow)}</div><h1 class="title">${escapeHTML(title)}</h1><p class="description">${escapeHTML(description)}</p>`;
+const row = (label, value) => `<div class="row"><span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong></div>`;
+const progress = (label, value, max, color) => {
+  const percent = Math.max(0, Math.min(100, 100 * value / Math.max(1, max)));
+  return `<div class="vital"><div class="vital-line"><span>${escapeHTML(label)}</span><strong>${fmt(value)} / ${fmt(max)}</strong></div><div class="bar"><div class="fill" style="width:${percent}%;background:${color}"></div></div></div>`;
+};
+const skyline = () => `<div class="scene" aria-label="Neon skyline of a troubled city"><div class="moon"></div><div class="skyline">${[55,72,42,95,63,80,45,72,54,90,69,48].map(h=>`<div class="tower" style="height:${h}%"></div>`).join('')}</div><div class="street"></div><div class="scene-badge">⚠ DISTRICT 03 // NIGHT SHIFT</div></div>`;
+const reports = g => `<section class="report"><h3>◉ DISPATCH LOG / LATEST ACTIVITY</h3>${g.messages.slice(0,6).map(m=>`<div class="report-entry">${escapeHTML(m)}</div>`).join('')}</section>`;
+
+function setupPage() {
+  return heading('◈ ACCESS TERMINAL / RECRUITMENT', 'Report for duty, Constable.', 'The city is in trouble. Your supervisor thinks you might make it worse.') +
+   `<div class="card"><h2>CREATE OFFICER PROFILE</h2><label class="field">OFFICER NAME<input id="new-name" maxlength="24" placeholder="Enter your damned name" autocomplete="off" spellcheck="false"></label><div class="subhead">// CLASSIFICATION</div><div class="classes">`+
+   [['robot','🤖','ROBOT','Charged Shot • literal-minded law enforcement'],['psychic','🔮','PSYCHIC','Psychic Blast • power grows each combat turn'],['psychopath','🔪','PSYCHOPATH','Chow Down • heal from damage dealt']].map(([key,icon,title,desc])=>`<button class="classcard ${state.picked===key?'selected':''}" data-class="${key}" aria-pressed="${state.picked===key}"><span class="glyph">${icon}</span><strong>${title}</strong><small>${desc}</small></button>`).join('')+`</div><div class="buttons">${actionButton('start','✦ BEGIN 30-DAY CAMPAIGN','primary full')}</div><div class="hint">Save data is associated with this browser session on the local Go server. No sign-up required.</div></div>`;
+}
+function patrolPage(g) {
+  if(g.phase==='combat'){
+    const e=g.enemy, p=g.player;
+    return heading('◈ ACTIVE PATROL / DISTRICT 03','Street encounter','Dispatch has assigned another unfortunate situation to your shift.') + skyline() +
+      `<div class="card"><div class="enemy-header"><b>${escapeHTML(e.name.toUpperCase())}</b><span>● HOSTILE</span></div><p class="muted">Enemy health ${fmt(Math.max(0,e.hp))} / ${fmt(e.maxHP)}</p><div class="bar"><div class="fill" style="background:#f77699;width:${Math.max(0,Math.min(100,e.hp/e.maxHP*100))}%"></div></div></div>`+
+      `<div class="buttons">${actionButton('fight','⚔ FIGHT','primary')}${actionButton('special',p.class==='psychic'?'✧ PSYCHIC BLAST':p.class==='robot'?'⚡ CHARGED SHOT':'◆ CHOW DOWN','cyan')}${actionButton('retreat','↳ RETURN TO HQ','full')}</div>`+reports(g);
+  }
+  if(g.phase==='event'){
+    return heading('◈ UNEXPECTED DISPATCH / DECISION',g.event.title,'What kind of officer are you going to be?')+skyline()+card('YOUR DECISION',`<p>${escapeHTML(g.event.description)}</p><div class="buttons">${g.event.choices.map(ch=>actionButton('choose_'+ch.id,ch.label,ch.id==='renegade'?'primary':'cyan')).join('')}</div>`)+reports(g);
+  }
+  if(g.phase==='gameover'){
+    return heading('◈ CAMPAIGN COMPLETE','Game over, Constable.',g.endReason)+card('FINAL RECORD',row('Officer',g.player.name)+row('Class',g.player.class)+row('Level',g.player.level)+row('Experience',fmt(g.player.experience))+row('Cash',`$${fmt(g.player.money)}`)+row('Paragon / Renegade',`${g.player.paragonRank} / ${g.player.renegadeRank}`)+`<div class="buttons">${actionButton('reset','↻ START NEW GAME','primary full')}</div>`)+reports(g);
+  }
+  return heading('◈ HQ / ACTIVE DUTY','Welcome to the night shift.','The city is falling apart. At least your paycheck is still arriving.')+skyline()+
+    card('NEXT ASSIGNMENT',`<p>District 03 is still dangerous. You have <strong style="color:var(--cyan)">${g.player.fightsLeft}</strong> patrol encounters remaining this shift.</p><div class="buttons">${actionButton('patrol','⚔ HIT THE STREETS','primary full',g.player.fightsLeft<=0)}${actionButton('clockout','☾ CLOCK OUT / NEXT DAY','full')}</div>`)+reports(g);
+}
+function hqPage(g) {
+  const p=g.player;
+  return heading('▣ OPERATIONS / HEADQUARTERS','Police headquarters','The coffee is stale. The paperwork is classified.')+
+    card('SHIFT BOARD',row('Officer',p.name)+row('Day remaining',`${p.days} of 30`)+row('Patrol encounters remaining',p.fightsLeft)+row('Club dividends per shift',`$${fmt(p.clubShares*500)}`)+row('Base shift pay','$500')+`<div class="buttons">${actionButton('clockout','☾ CLOCK OUT & COLLECT PAY','primary full')}</div>`)+
+    card('DISPATCHER NOTE','<p>Your promotions depend on experience. Reaching 10 Paragon rank may earn you powerful enemies inside the department.</p>')+reports(g);
+}
+function propertyPage(g) {
+  const p=g.player;
+  return heading('◫ EVIDENCE DIVISION / PROPERTY ROOM','Property room','A suspicious collection of perfectly legal budget expenditures.')+
+    card('AVAILABLE SUPPLIES',`<p class="muted">Original mechanics: cocaine increases XP gains, fentanyl alters normal attack damage, LSD is currently a collectible.</p>`+
+      [['buy_cocaine','Cocaine','$1,000 / gram','+100 XP per unit held after a patrol victory'],['buy_fentanyl','Fentanyl','$500 / bag','Passive normal-attack modifier'],['buy_lsd','LSD','$100 / five tabs','Collectible; no gameplay effect yet']].map(([act,label,price,desc])=>`<div class="row"><div><strong>${escapeHTML(label)}</strong><div class="hint">${escapeHTML(price)} • ${escapeHTML(desc)}</div></div><button class="btn small" data-action="${act}">BUY</button></div>`).join('')+
+      `<p class="hint">At Renegade rank 10+, property room purchases grant double units.</p>`)+reports(g);
+}
+function nightlifePage(g) {
+  const p=g.player;
+  return heading('♧ DOWNTOWN / RED ROOM','The Red Room','Bureaucracy ends where questionable entertainment begins.')+
+    card('DOWNTOWN ACTIVITIES',`<p>Take an adults-only nightlife break for $100 to recover 200 HP. A condom protects you from the game's infection roll; the doctor can treat infections.</p><div class="buttons">${actionButton('nightlife','♥ NIGHTLIFE BREAK • $100','primary')}${actionButton('buy_condoms','+ 5 CONDOMS • $10')}</div>`)+
+    card('CLUB INVESTMENT',`<p>Own a share of the venue: $2,000 per share, providing $500 income each new shift. This version uses venue investment rather than buying people.</p>${row('Current shares',p.clubShares)}${row('Income each shift',`$${fmt(p.clubShares*500)}`)}<div class="buttons">${actionButton('buy_club','◆ INVEST $2,000','cyan full')}</div>`)+reports(g);
+}
+function doctorPage(g) {
+  const p=g.player;
+  return heading('✚ MEDICAL SERVICES / CLINIC','Doctors office','The doctor refuses to ask how you got here.')+
+    card('MEDICAL RECORD',row('Current HP',fmt(p.hp))+row('Active infections',p.infections)+row('Cure cost','$100')+`<div class="buttons">${actionButton('clinic','✚ TREAT INFECTIONS • $100','cyan full',p.infections===0)}</div><p class="hint">Infections reduce daily patrol capacity and cause a $25 per-infection income penalty when you clock out.</p>`)+reports(g);
+}
+function recordPage(g) {
+ const p=g.player;
+ return heading('▤ PERSONNEL / CLASSIFIED DOSSIER','Officer file','Everything on record. Nothing off the record.')+
+   card('PERSONNEL',row('Name',p.name)+row('Classification',p.class)+row('Level',p.level)+row('Attack',p.attack)+row('Class ability charge',p.classPower)+row('Experience',fmt(p.experience))+row('Paragon',p.paragonRank)+row('Renegade',p.renegadeRank)+row('Remaining days',p.days))+
+   card('INVENTORY',row('Cocaine',p.cocaine)+row('Fentanyl',p.fentanyl)+row('LSD',p.lsd)+row('Condoms',p.condoms)+row('Club shares',p.clubShares))+
+   card('PERSONNEL ACTIONS',`<p>Starting a new campaign replaces this browser session's current save.</p><div class="buttons">${actionButton('reset','↻ NEW GAME','alert full')}</div>`)+reports(g);
+}
+function render() {
+ const g=state.game;
+ if(!g) return;
+ let page;
+ if(g.phase==='setup') page=setupPage();
+ else if(g.phase!=='hq') page=patrolPage(g);
+ else page=({patrol:patrolPage,hq:hqPage,property:propertyPage,nightlife:nightlifePage,doctor:doctorPage,record:recordPage}[state.panel] || patrolPage)(g);
+ el('content').innerHTML=page;
+ document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.panel===state.panel));
+ document.querySelectorAll('.nav-btn').forEach(b=>b.disabled=g.phase!=='hq');
+ const p=g.player;
+ el('officer-name').textContent=p.name || 'UNASSIGNED';
+ el('officer-class').textContent=p.class ? `${p.class.toUpperCase()} // LEVEL ${p.level}` : 'CLASS NOT SELECTED';
+ el('shift-status').textContent=g.phase==='setup'?'RECRUITMENT OPEN':g.phase==='gameover'?'CAMPAIGN FINISHED':g.phase==='combat'?'COMBAT ACTIVE':`${p.days} DAYS REMAINING`;
+ if(g.phase==='setup') {el('vitals').innerHTML='';el('brief').innerHTML='<p class="hint">Choose a class to get started.</p>';return}
+ const xpMax=([0,...[1000,4000,9000,18000,30000,60000,120000,240000,480000,960000,1920000,3840000,7680000,15360000]][p.level] || 15360000);
+ el('vitals').innerHTML=progress('HEALTH',p.hp,Math.max(200,p.hp),'#6addab')+progress('EXPERIENCE',p.experience,xpMax,'#ffc778')+
+  `<div class="vital"><div class="vital-line"><span>KARMA</span><strong style="color:var(--pink)">${p.renegadeRank>=p.paragonRank?'RENEGADE':'PARAGON'}</strong></div><div class="bar"><div class="fill" style="width:${Math.min(100,Math.abs(p.renegadeRank-p.paragonRank)*10)}%;background:var(--pink)"></div></div></div>`;
+ el('brief').innerHTML=row('CASH',`$${fmt(p.money)}`)+row('PATROLS',`${p.fightsLeft} / ${25}`)+row('DAYS',p.days)+row('INFECTIONS',p.infections);
+}
+function toast(msg){const box=el('toast');box.textContent=msg;box.classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>box.classList.remove('visible'),4100)}
+async function request(action,name='',officerClass=''){
+ if(state.busy)return;
+ state.busy=true;
+ try{
+  const response=await fetch('/api/action',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,name,class:officerClass})});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'server error');
+  state.game=data;state.panel='patrol';render();
+ }catch(err){toast(err.message || 'Connection lost')}
+ finally{state.busy=false}
+}
+document.addEventListener('click',e=>{
+ const cls=e.target.closest('[data-class]');if(cls){state.picked=cls.dataset.class;const name=el('new-name')?.value;render();if(el('new-name'))el('new-name').value=name||'';return}
+ const nav=e.target.closest('[data-panel]');if(nav && state.game?.phase==='hq'){state.panel=nav.dataset.panel;render();return}
+ const btn=e.target.closest('[data-action]');if(!btn)return;
+ if(btn.dataset.action==='reset'&&!confirm('Replace this browser session save with a new game?'))return;
+ request(btn.dataset.action,btn.dataset.action==='start'?(el('new-name')?.value||''):'',state.picked);
+});
+(async()=>{
+ try{const res=await fetch('/api/state',{cache:'no-store'});if(!res.ok)throw Error('Cannot connect to OPP Wars server');state.game=await res.json();render()}
+ catch(e){el('content').innerHTML=heading('◈ OFFLINE','Connection failed','The server did not answer. Reload after starting the Go application.');toast(e.message)}
+})();
