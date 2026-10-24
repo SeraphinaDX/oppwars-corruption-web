@@ -64,7 +64,7 @@ func TestShopAndClockOut(t *testing.T) {
 	if err := g.act("clockout", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if g.Player.Money != oldCash+500+500-50 || g.Player.Bumfights != 8 || g.Player.Days != 29 {
+	if g.Player.Money != oldCash+500+500-2*infectionIncomeLoss || g.Player.Bumfights != minInfectedPatrols || g.Player.Days != 29 {
 		t.Fatal("clockout results wrong", g.Player)
 	}
 	g.Player.Days = 1

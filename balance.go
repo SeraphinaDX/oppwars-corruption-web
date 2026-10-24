@@ -11,6 +11,15 @@ const (
 	psychicBlastCost   = 25 // Exactly four double-damage blasts per shift
 	maxInventoryEach   = 20
 	maxClubShares      = 5
+	// Red Room / Medical Wing economy: condoms cost $50 each in a five-pack.
+	condomPackPrice    = 250
+	condomsPerPack     = 5
+	infectionClinicFee = 500 // Per infection; clinic cures all at once.
+	infectionDamageLossPercent = 15 // Per infection, capped at 45%.
+	infectionIncomeLoss = 150 // Per infection, paid each shift until cured.
+	minShiftIncome      = 100 // Prevent financial softlocks.
+	minInfectedPatrols  = 5   // Still enough patrols to earn a cure.
+	infectionPatrolLoss = 3   // On top of the existing 15-patrol illness penalty.
 	// Property Room prices (cash for one unit; Renegade purchases double units).
 	cocainePrice      = 400
 	fentanylPrice     = 150
@@ -70,12 +79,34 @@ func (p *Player) restoreHP(amount int) {
 	p.HP = min(p.maxHP(), p.HP+amount)
 }
 
+// Infection weakens both normal attacks and class specials. The penalty
+// stacks only to 45%, so ill officers can still earn treatment money.
+func (p *Player) infectionAdjustedDamage(damage int) int {
+	if damage <= 0 {
+		return 0
+	}
+	loss := min(45, max(0, p.Infections)*infectionDamageLossPercent)
+	return max(1, damage*(100-loss)/100)
+}
+
 func (p *Player) normalDamage() int {
 	base := p.Attack * p.Level
 	if p.FentanylEncounters > 0 {
-		return base + base/4 // +25%, not inventory multiplied.
+		base += base/4 // +25%, not inventory multiplied.
 	}
-	return base
+	return p.infectionAdjustedDamage(base)
+}
+
+// A shift begins with fewer patrol assignments while infected. Floor the
+// capacity to avoid a dead-end when an officer cannot afford the doctor.
+func (p *Player) shiftPatrols() int {
+	if p.Infections <= 0 {
+		return fightsPerDay
+	}
+	return max(minInfectedPatrols, fightsPerDay - 15 - p.Infections*infectionPatrolLoss)
+}
+func (p *Player) treatmentCost() int {
+	return max(0, p.Infections)*infectionClinicFee
 }
 
 func (p *Player) counterDamage() int {
@@ -135,7 +166,7 @@ func (p *Player) clearEffects() bool {
 }
 
 func (p *Player) shiftIncome() int {
-	return 500 + min(p.ClubShares, maxClubShares)*500 - p.Infections*25
+	return max(minShiftIncome, 500+min(p.ClubShares, maxClubShares)*500-max(0,p.Infections)*infectionIncomeLoss)
 }
 
 func (p *Player) victoryPay() int {

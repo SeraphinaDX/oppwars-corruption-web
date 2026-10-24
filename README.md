@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.4.0
+# OPP Wars: Corruption — Web Edition v0.5.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,7 +27,7 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.4.0
+## What's in v0.5.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -36,6 +36,16 @@ Custom listen address and save location:
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.5.0 — Red Room protection and infection consequences
+
+- **Condoms:** five now cost $250 ($50 each), instead of $10. A condom still protects the paid Red Room encounter against infections; encounters cost $100, and the 200 HP recovery is unchanged.
+- **Combat illness:** each untreated infection reduces damage from normal attacks and all three class specials by 15%, up to a 45% maximum. These are fictional RPG debuffs, not medical claims.
+- **Income:** every infection deducts $150 each new shift (previously $25). Net shift income is never less than $100 so a struggling character can recover.
+- **Patrol slots:** an infected officer gets 25 − 15 − 3 × infections assignments next shift, with a minimum of 5. Untreated infections remain until cured.
+- **Clinic:** treating all infections costs $500 per infection (previously $100 total), with a clear breakdown in the Medical Wing.
+- UI exposes the current penalties and exact cure price; Red Room descriptions stay in character rather than discussing probability rolls. Old save games remain compatible.
+- **Version:** incremented server and browser release to v0.5.0.
 
 ## v0.4.0 — in-character combat and Red Room
 
