@@ -3,6 +3,7 @@ package main
 import (
  "strings"
  "testing"
+ "os"
 )
 
 // Prices correspond to what the browser shows and must be consistent with
@@ -37,7 +38,11 @@ func TestPropertyRoomPrices(t *testing.T) {
 }
 
 func TestVersionBumpAndLegacySaves(t *testing.T) {
- if gameVersion!="0.3.0" {t.Fatalf("release is %s, expected 0.3.0",gameVersion)}
+ doc,err:=os.ReadFile("README.md")
+ if err!=nil {t.Fatal(err)}
+ if !strings.HasPrefix(string(doc),"# OPP Wars: Corruption — Web Edition v"+gameVersion+"\n") {
+  t.Fatalf("README release heading does not match version.go (%s)",gameVersion)
+ }
  if g:=newGame();g.Version!=gameVersion {t.Fatal("new game has stale version")}
  // The browser must show the release from the server, rather than an
  // independently hard-coded version string.
