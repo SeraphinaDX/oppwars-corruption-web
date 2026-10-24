@@ -32,7 +32,7 @@ function patrolPage(g) {
   if(g.phase==='combat'){
     const e=g.enemy, p=g.player;
     return heading('◈ ACTIVE PATROL / DISTRICT 03',`${p.name} vs. ${e.name}`,'Dispatch has assigned another unfortunate situation to your shift.') + skyline() + effectPanel(p) +
-      `<div class="card"><div class="enemy-header"><b>${escapeHTML(e.name.toUpperCase())}</b><span>● HOSTILE</span></div><p class="muted">Enemy health ${fmt(Math.max(0,e.hp))} / ${fmt(e.maxHP)}</p>${e.catchphrase?`<blockquote class="enemy-quote">“${escapeHTML(e.catchphrase)}”</blockquote>`:''}<div class="bar"><div class="fill" style="background:#f77699;width:${Math.max(0,Math.min(100,e.hp/e.maxHP*100))}%"></div></div></div>`+
+      `<div class="card"><div class="enemy-header"><b>${escapeHTML(e.name.toUpperCase())}</b><span>● HOSTILE</span></div><p class="muted">Enemy health ${fmt(Math.max(0,e.hp))} / ${fmt(e.maxHP)}</p><div class="bar" role="progressbar" aria-label="Enemy health" aria-valuemin="0" aria-valuemax="${e.maxHP}" aria-valuenow="${Math.max(0,e.hp)}"><div class="fill" style="background:#f77699;width:${Math.max(0,Math.min(100,e.hp/e.maxHP*100))}%"></div></div>${e.catchphrase?`<blockquote class="enemy-quote">“${escapeHTML(e.catchphrase)}”</blockquote>`:''}</div>`+
       `<div class="buttons">${actionButton('fight','⚔ FIGHT','primary')}${actionButton('special',p.class==='psychic'?`✧ PSYCHIC BLAST (${Math.floor((p.psychicEnergy??100)/25)} LEFT)`:p.class==='robot'?`⚡ CHARGED SHOT (${p.classPower}×)`:'◆ CHOW DOWN','cyan',p.class==='psychic'&&(p.psychicEnergy??100)<25)}${actionButton('retreat','↳ RETURN TO HQ','full')}</div>`+reports(g);
   }
   if(g.phase==='event'){
