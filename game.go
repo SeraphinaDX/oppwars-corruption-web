@@ -379,7 +379,7 @@ func (g *Game) buy(price int, item string, units int) error {
 	if p.Money < price {
 		return errors.New("not enough cash")
 	}
-	if p.RenegadeRank >= renegadeShopRank {
+	if p.renegadeShopPerk() {
 		units *= 2
 	}
 	var owned int
@@ -511,7 +511,7 @@ func (g *Game) startEncounter() {
 	g.Phase = "combat"
 	g.log(fmt.Sprintf("%s runs into %s on patrol.", p.Name, g.Enemy.Name))
 	g.log(fmt.Sprintf("%s yells: %q", g.Enemy.Name, g.Enemy.Catchphrase))
-	if p.ParagonRank >= paragonAmbushRank && rand.IntN(4) == 1 {
+	if p.paragonAmbushEligible() && rand.IntN(4) == 1 {
 		hit := min(50*p.Level, p.maxHP()/3)
 		p.HP -= hit
 		g.log(fmt.Sprintf("Captain Grimstead arranges a drive-by against %s, costing %d HP.", p.Name, hit))
