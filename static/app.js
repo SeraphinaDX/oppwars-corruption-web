@@ -66,6 +66,21 @@ function propertyPage(g) {
       return `<div class="shop-item"><div class="shop-description"><strong>${escapeHTML(label)}</strong><span class="hint">${escapeHTML(price)} · ${escapeHTML(desc)}<br>IN LOCKER: ${fmt(count)} / 20</span></div><div class="shop-actions">${actionButton('buy_'+id,'BUY','small',p.money<shopPrices[id]||count+units*(p.renegadeRank>=10?2:1)>20)}${actionButton('use_'+id,'ACTIVATE','cyan small',count<1||!!active)}</div></div>`;
     }).join('')+`<p class="hint">Renegade rank 10+ doubles shop quantities, subject to the 20-unit inventory limit. These are fictional game mechanics, not real drug effects.</p>`)+reports(g);
 }
+function redRoomResultPage(g) {
+ const r=g.redRoom;
+ if(!r) return heading('♧ RED ROOM / REPORT MISSING','Report unavailable','Return to the main menu and try again.');
+ const headingText = r.infectionGained ? 'UNWELCOME SOUVENIR' : 'NO NEW INFECTION';
+ const report = r.infectionGained
+   ? 'The morning clinic report is in: you picked up an infection. The doctor will be expecting you.'
+   : r.protected
+     ? 'You used a condom. No new infection was recorded during this encounter.'
+     : 'You got lucky this time. No new infection was recorded during this encounter.';
+ const tone = r.infectionGained ? 'bad' : 'good';
+ return heading('♧ RED ROOM / AFTER-ACTION REPORT','A night at the Red Room','The curtains close, the neon flickers, and the story does not end there.') +
+   card('THE ENCOUNTER',`<p class="redroom-story">${escapeHTML(r.scene)}</p>`) +
+   `<section class="redroom-result ${tone}" aria-label="Encounter outcome"><div class="kicker">// MEDICAL REPORT</div><h2>${headingText}</h2><p>${escapeHTML(report)}</p>${row('Current infections',r.totalInfections)}${row('Condom used',r.protected?'Yes':'No')}${row('Health restored',`+${fmt(r.healthRecovered)} HP`)}${row('Money spent',`$${fmt(r.cost)}`)}</section>` +
+   `<div class="buttons">${actionButton('continue','↳ CONTINUE','primary full')}</div>`;
+}
 function nightlifePage(g) {
   const p=g.player;
   return heading('♧ DOWNTOWN / RED ROOM','The Red Room','The neon glows, the music pounds, and nobody wants to see your badge.')+
@@ -94,6 +109,7 @@ function render() {
  el('game-version').textContent=`• v${g.version || 'unknown'}`;
  let page;
  if(g.phase==='setup') page=setupPage();
+ else if(g.phase==='redroom_result') page=redRoomResultPage(g);
  else if(g.phase!=='hq') page=patrolPage(g);
  else page=({patrol:patrolPage,hq:hqPage,property:propertyPage,nightlife:nightlifePage,doctor:doctorPage,record:recordPage}[state.panel] || patrolPage)(g);
  el('content').innerHTML=page;
@@ -103,7 +119,7 @@ function render() {
  const p=g.player;
  el('officer-name').textContent=p.name || 'UNASSIGNED';
  el('officer-class').textContent=p.class ? `${p.class.toUpperCase()} // LEVEL ${p.level}` : 'CLASS NOT SELECTED';
- el('shift-status').textContent=g.phase==='setup'?'RECRUITMENT OPEN':g.phase==='gameover'?'CAMPAIGN FINISHED':g.phase==='combat'?'COMBAT ACTIVE':`${p.days} DAYS REMAINING`;
+ el('shift-status').textContent=g.phase==='setup'?'RECRUITMENT OPEN':g.phase==='gameover'?'CAMPAIGN FINISHED':g.phase==='combat'?'COMBAT ACTIVE':g.phase==='redroom_result'?'RED ROOM REPORT':`${p.days} DAYS REMAINING`;
  if(g.phase==='setup') {el('vitals').innerHTML='';el('brief').innerHTML='<p class="hint">Choose a class to get started.</p>';return}
  const xpMax=([0,...[1000,4000,9000,18000,30000,60000,120000,240000,480000,960000,1920000,3840000,7680000,15360000]][p.level] || 15360000);
  el('vitals').innerHTML=progress('HEALTH',p.hp,Math.min(720,200+Math.max(0,p.level-1)*40),'#6addab')+progress('EXPERIENCE',p.experience,xpMax,'#ffc778')+(p.class==='psychic'?progress('PSYCHIC ENERGY',p.psychicEnergy??100,100,'#8a80ff'):p.class==='robot'?progress('CHARGED SHOT',p.classPower,4,'#57e8ef'):'')+
