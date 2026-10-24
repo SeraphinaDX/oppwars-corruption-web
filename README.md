@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.6.2
+# OPP Wars: Corruption — Web Edition v0.7.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,7 +27,7 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.6.2
+## What's in v0.7.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -36,6 +36,17 @@ Custom listen address and save location:
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.7.0 — arrests, hand cuffs, and combat karma
+
+- The Property Room now sells **hand cuffs** at **$100 per pair**. Up to 20 may be stored and they persist across shifts and in older saved games (which begin with zero cuffs). Renegade rank 10+ keeps the existing two-for-one Property Room quantity perk.
+- Combat now has **Fight**, **Class Special**, **Arrest**, and **Return to HQ** options.
+- **Arrest** becomes available with at least one pair of hand cuffs when the enemy is **alive and at or below half HP**. A successful arrest consumes one pair, ends that encounter, awards **+1 Paragon**, and gives **half the normal victory cash and XP** (including XP Rush bonus).
+- Eliminating an opponent through Fight or a class special still grants the normal full rewards, but also awards **+1 Renegade**. Neither combat outcome reduces the opposing karma rank.
+- Failed arrest attempts due to health threshold or missing cuffs consume **no items** and give **no rewards**. Retreat and defeat award neither type of combat karma.
+- Arrests complete a patrol slot and decrement temporary effect durations exactly like normal victories. XP promotions and Paragon/Renegade event choices are unchanged.
+- Added save-compatible inventory, combat UI hints, and regression tests for purchases, rewards, karma, levels, boundaries, and persistence.
+- **Version:** v0.7.0 is read dynamically from the server; older save files continue to work.
 
 ## v0.6.2 — defeat ends your shift
 

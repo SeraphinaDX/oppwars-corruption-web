@@ -11,6 +11,14 @@ const (
 	psychicBlastCost   = 25 // Exactly four double-damage blasts per shift
 	maxInventoryEach   = 20
 	maxClubShares      = 5
+	// Hand cuffs allow a controlled arrest after an enemy is weakened.
+	handcuffsPrice     = 100
+	handcuffsPerPurchase = 1
+	arrestHPPercent    = 50
+	// Arrests grant half of the usual patrol cash and XP, plus one Paragon.
+	// Eliminations retain full rewards, but add one Renegade.
+	arrestRewardDivisor = 2
+	combatKarmaGain     = 1
 	// Red Room / Medical Wing economy: condoms cost $50 each in a five-pack.
 	condomPackPrice    = 250
 	condomsPerPack     = 5
@@ -167,6 +175,11 @@ func (p *Player) clearEffects() bool {
 
 func (p *Player) shiftIncome() int {
 	return max(minShiftIncome, 500+min(p.ClubShares, maxClubShares)*500-max(0,p.Infections)*infectionIncomeLoss)
+}
+
+// Arrest can only succeed while the target is alive and at or below 50% HP.
+func canArrestEnemy(e *Encounter) bool {
+	return e != nil && e.MaxHP > 0 && e.HP > 0 && e.HP*100 <= e.MaxHP*arrestHPPercent
 }
 
 func (p *Player) victoryPay() int {

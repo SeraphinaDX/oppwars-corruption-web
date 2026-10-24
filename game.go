@@ -29,6 +29,7 @@ type Player struct {
 	Experience         int    `json:"experience"`
 	Level              int    `json:"level"`
 	Condoms            int    `json:"condoms"`
+	Handcuffs          int    `json:"handcuffs"`
 	Infections         int    `json:"infections"`
 	ClubShares         int    `json:"clubShares"`
 	Cocaine            int    `json:"cocaine"`
@@ -150,6 +151,8 @@ func (g *Game) act(action, name, class string) error {
 			return g.buy(fentanylPrice, "fentanyl", 1)
 		case "buy_lsd":
 			return g.buy(lsdPrice, "lsd", lsdPurchaseUnits)
+		case "buy_handcuffs":
+			return g.buy(handcuffsPrice, "handcuffs", handcuffsPerPurchase)
 		case "use_cocaine", "use_fentanyl", "use_lsd":
 			return g.useEffect(action)
 		case "buy_condoms":
@@ -271,6 +274,16 @@ func (g *Game) act(action, name, class string) error {
 			g.Phase = "hq"
 			g.log(fmt.Sprintf("%s retreats to headquarters. One patrol encounter used.", p.Name))
 			return nil
+		case "arrest":
+			if p.Handcuffs <= 0 {
+				return errors.New("no hand cuffs in the property room inventory")
+			}
+			if !canArrestEnemy(g.Enemy) {
+				return errors.New("weaken the suspect to 50% HP or less before arresting")
+			}
+			p.Handcuffs--
+			g.finishCombat(true)
+			return nil
 		case "fight":
 			if rand.IntN(100) > 40 {
 				damage := p.normalDamage()
@@ -334,29 +347,7 @@ func (g *Game) act(action, name, class string) error {
 			return nil
 		}
 		if g.Enemy.HP <= 0 {
-			defeated := g.Enemy.Name
-			g.Enemy = nil
-			g.Phase = "hq"
-			p.Bumfights--
-			// Flat rewards prevent exponential money and passive-inventory XP farming.
-			pay := p.victoryPay()
-			p.Money += pay
-			baseXP, bonusXP := p.earnedXP()
-			gained := baseXP + bonusXP
-			p.Experience += gained
-			oldLevel := p.Level
-			for i, threshold := range levelThresholds {
-				if p.Experience >= threshold {
-					p.Level = i + 2
-				}
-			}
-			g.log(fmt.Sprintf("%s defeats %s! +%d XP (%d bonus), +$%d.", p.Name, defeated, gained, bonusXP, pay))
-			for _, msg := range p.finishEncounter() {
-				g.log(msg + ".")
-			}
-			if p.Level > oldLevel {
-				g.log(fmt.Sprintf("PROMOTION: %s reaches level %d!", p.Name, p.Level))
-			}
+			g.finishCombat(false)
 			return nil
 		}
 		if rand.IntN(3) == 0 {
@@ -389,6 +380,8 @@ func (g *Game) buy(price int, item string, units int) error {
 		owned = p.Fentanyl
 	case "lsd":
 		owned = p.LSD
+	case "handcuffs":
+		owned = p.Handcuffs
 	default:
 		return errors.New("unknown item")
 	}
@@ -403,10 +396,54 @@ func (g *Game) buy(price int, item string, units int) error {
 		p.Fentanyl += units
 	case "lsd":
 		p.LSD += units
+	case "handcuffs":
+		p.Handcuffs += units
 	}
 	g.log(fmt.Sprintf("Property room: bought %d %s for $%d.", units, item, price))
 	return nil
 }
+// finishCombat resolves either a nonlethal arrest or an enemy elimination.
+// Both consume one patrol and end temporary encounter buffs exactly once.
+// Arrests deliberately grant lower immediate rewards in exchange for Paragon.
+func (g *Game) finishCombat(arrested bool) {
+	p := &g.Player
+	opponent := g.Enemy.Name
+	g.Enemy = nil
+	g.Phase = "hq"
+	p.Bumfights--
+
+	pay := p.victoryPay()
+	baseXP, bonusXP := p.earnedXP()
+	if arrested {
+		pay /= arrestRewardDivisor
+		baseXP /= arrestRewardDivisor
+		bonusXP /= arrestRewardDivisor
+		p.ParagonRank += combatKarmaGain
+	} else {
+		p.RenegadeRank += combatKarmaGain
+	}
+	gained := baseXP + bonusXP
+	p.Money += pay
+	p.Experience += gained
+	oldLevel := p.Level
+	for i, threshold := range levelThresholds {
+		if p.Experience >= threshold {
+			p.Level = i + 2
+		}
+	}
+	if arrested {
+		g.log(fmt.Sprintf("%s arrests %s and brings them in! +%d Paragon, +%d XP (%d bonus), +$%d.", p.Name, opponent, combatKarmaGain, gained, bonusXP, pay))
+	} else {
+		g.log(fmt.Sprintf("%s defeats %s! +%d Renegade, +%d XP (%d bonus), +$%d.", p.Name, opponent, combatKarmaGain, gained, bonusXP, pay))
+	}
+	for _, msg := range p.finishEncounter() {
+		g.log(msg + ".")
+	}
+	if p.Level > oldLevel {
+		g.log(fmt.Sprintf("PROMOTION: %s reaches level %d!", p.Name, p.Level))
+	}
+}
+
 // advanceShift completes a shift. A defeat forfeits the day's remaining patrols
 // and earnings but is not a campaign-ending condition. Hospital recovery restores
 // half of maximum HP, so the officer is playable on the following day.
