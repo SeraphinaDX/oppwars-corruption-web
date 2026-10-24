@@ -26,7 +26,7 @@ func TestHandcuffsPurchaseAndPersistence(t *testing.T) {
 	if g.Player.Handcuffs != 1 || g.Player.Money != 100 {
 		t.Fatalf("wrong cuff purchase balance %+v",g.Player)
 	}
-	g.Player.RenegadeRank = 10
+	g.Player.RenegadeRank = renegadeShopRank
 	if err := g.act("buy_handcuffs", "", ""); err != nil { t.Fatal(err) }
 	if g.Player.Handcuffs != 3 || g.Player.Money != 0 { t.Fatalf("two-for-one perk failed %+v",g.Player) }
 	g.Player.Handcuffs = maxInventoryEach - 1
@@ -96,7 +96,7 @@ func TestArrestHalfXPAndPromotion(t *testing.T) {
 		t.Fatalf("arrest bonus XP or promotion failed: %+v",g.Player)
 	}
 	if !logContains(g,"+125 XP (25 bonus)") {t.Fatal("arrest XP/bonus not reported correctly")}
-	if g.Player.psychicLeft()!=100 {t.Fatal("arrest spent psychic energy")}
+	if g.Player.psychicLeft()!=maxPsychicEnergy {t.Fatal("arrest spent psychic energy")}
 }
 
 func TestEliminationAwardsOnlyRenegade(t *testing.T) {

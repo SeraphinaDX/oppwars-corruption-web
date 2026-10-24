@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.7.0
+# OPP Wars: Corruption — Web Edition v0.8.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,7 +27,7 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.7.0
+## What's in v0.8.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -36,6 +36,16 @@ Custom listen address and save location:
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.8.0 — longer-term karma perks and Psychic recharge
+
+- **Karma thresholds:** Renegade's two-for-one Property Room purchases and the department's high-Paragon ambush trigger now require **rank 100**, up from 10. With up to 25 patrol encounters each day, rank 10 was too easy to reach through arrests and eliminations. The effects stay the same after unlocking.
+- **Psychic Blast:** Psychic energy increases from **100 PSI (four blasts)** to **300 PSI (twelve blasts)** per shift. Each double-damage blast still spends 25 PSI and the meter fully refreshes at normal or forced clock-out.
+- **Red Room PSI recovery:** a paid Red Room encounter restores **150 PSI (up to six blasts)** to a Psychic, never beyond 300. The normal $100 price, HP recovery, condom/infection chances, and story-result screen are retained.
+- **Time cost:** a Red Room encounter now consumes **one remaining patrol turn** from the current shift, for every class. At zero turns, the action is unavailable even if the officer has enough money. The result screen shows the spent turn and recovered PSI.
+- **Save compatibility:** when a Psychic's existing v0.7.x (or older) save is loaded, the remaining fraction of the old 100-PSI meter is converted to a 300-point meter. A depleted meter stays at zero; reopening the game cannot grant a free refill. All other progress remains intact.
+- The recruitment screen, combat button, progress meter, Headquarters, Property Room, and Red Room show the updated limits.
+- **Version:** bumped to v0.8.0 in `version.go`, with automated release consistency checks.
 
 ## v0.7.0 — arrests, hand cuffs, and combat karma
 

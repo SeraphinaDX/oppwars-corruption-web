@@ -51,7 +51,7 @@ func TestShopAndClockOut(t *testing.T) {
 	if g.Player.Fentanyl != 1 || g.Player.LSD != 1 {
 		t.Fatal("unexpected inventory", g.Player)
 	}
-	g.Player.RenegadeRank = 10
+	g.Player.RenegadeRank = renegadeShopRank
 	if err := g.act("buy_lsd", "", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestPsionicAndPsychopath(t *testing.T) {
 		g := newGame()
 		_ = g.act("start", "Unit", cls)
 		g.startEncounter()
-		if cls == "psychic" && g.Player.psychicLeft() != 100 {
+		if cls == "psychic" && g.Player.psychicLeft() != maxPsychicEnergy {
 			t.Fatal("psychic must start with full meter")
 		}
 		if cls == "psychopath" {
@@ -122,7 +122,7 @@ func TestPsionicAndPsychopath(t *testing.T) {
 		if err := g.act("special", "", ""); err != nil {
 			t.Fatal(err)
 		}
-		if cls == "psychic" && (g.Phase != "combat" || g.Enemy.HP != 20 || g.Player.psychicLeft() != 75) {
+		if cls == "psychic" && (g.Phase != "combat" || g.Enemy.HP != 20 || g.Player.psychicLeft() != maxPsychicEnergy-psychicBlastCost) {
 			t.Fatal("unexpected psychic ability damage")
 		}
 		if cls == "psychopath" && g.Player.HP != 70 {

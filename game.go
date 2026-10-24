@@ -176,6 +176,9 @@ func (g *Game) act(action, name, class string) error {
 			return nil
 		case "nightlife":
 			const price = 100
+			if p.Bumfights <= 0 {
+				return errors.New("no patrol turns left today — clock out for the next shift")
+			}
 			if p.Money < price {
 				return errors.New("not enough cash")
 			}
@@ -184,7 +187,12 @@ func (g *Game) act(action, name, class string) error {
 			oldHP := p.HP
 			protected := p.Condoms > 0
 			p.Money -= price
+			p.Bumfights-- // A visit occupies one of the day's 25 patrol turns.
 			p.restoreHP(200)
+			restoredPSI := p.restorePsychicEnergy(psychicRedRoomRestore)
+			if restoredPSI > 0 {
+				g.log(fmt.Sprintf("%s feels rejuvenated: +%d psychic energy (%d blasts).", p.Name, restoredPSI, restoredPSI/psychicBlastCost))
+			}
 			if protected {
 				p.Condoms--
 			}
@@ -203,6 +211,8 @@ func (g *Game) act(action, name, class string) error {
 				InfectionGained: infected,
 				TotalInfections: p.Infections,
 				HealthRecovered: p.HP - oldHP,
+				PsychicEnergyRestored: restoredPSI,
+				TurnsSpent: 1,
 				Cost: price,
 			}
 			g.Phase = "redroom_result"
@@ -305,7 +315,7 @@ func (g *Game) act(action, name, class string) error {
 			}
 		case "special":
 			// Charged Shot charges from 1x to 4x over combat turns;
-			// Psychic Blast is always 2x damage but costs 25 of 100 daily PSI.
+			// Psychic Blast is always 2x damage and costs 25 of 300 PSI.
 			damage := p.Attack * p.Level
 			label := "Chow Down"
 			switch p.Class {
@@ -369,7 +379,7 @@ func (g *Game) buy(price int, item string, units int) error {
 	if p.Money < price {
 		return errors.New("not enough cash")
 	}
-	if p.RenegadeRank >= 10 {
+	if p.renegadeShopPerk() {
 		units *= 2
 	}
 	var owned int
@@ -466,7 +476,7 @@ func (g *Game) advanceShift(defeated bool) {
 	p.Days--
 	if p.Class == "psychic" {
 		p.refillPsychicEnergy()
-		g.log("Psychic meter recharged: 4 blasts available for the new shift.")
+		g.log(fmt.Sprintf("Psychic meter recharged: %d blasts available for the new shift.", maxPsychicEnergy/psychicBlastCost))
 	}
 	if p.clearEffects() {
 		g.log("End of shift: all temporary effects have worn off.")
@@ -501,7 +511,7 @@ func (g *Game) startEncounter() {
 	g.Phase = "combat"
 	g.log(fmt.Sprintf("%s runs into %s on patrol.", p.Name, g.Enemy.Name))
 	g.log(fmt.Sprintf("%s yells: %q", g.Enemy.Name, g.Enemy.Catchphrase))
-	if p.ParagonRank == 10 && rand.IntN(4) == 1 {
+	if p.paragonAmbushEligible() && rand.IntN(4) == 1 {
 		hit := min(50*p.Level, p.maxHP()/3)
 		p.HP -= hit
 		g.log(fmt.Sprintf("Captain Grimstead arranges a drive-by against %s, costing %d HP.", p.Name, hit))

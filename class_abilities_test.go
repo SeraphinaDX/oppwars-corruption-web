@@ -8,12 +8,12 @@ import (
 func TestPsychicMeterDailyLimitAndRecharge(t *testing.T) {
  g:=newGame()
  if err:=g.act("start","Psi","psychic");err!=nil {t.Fatal(err)}
- if g.Player.psychicLeft()!=100 {t.Fatal("missing initial meter")}
- for i:=0;i<4;i++ {
+ if g.Player.psychicLeft()!=300 {t.Fatal("missing initial meter")}
+ for i:=0;i<12;i++ {
    g.startEncounter()
    g.Enemy.HP=100000
    if err:=g.act("special","","");err!=nil {t.Fatal(err)}
-   if want:=100-(i+1)*25;g.Player.psychicLeft()!=want {t.Fatalf("meter=%d want=%d",g.Player.psychicLeft(),want)}
+   if want:=300-(i+1)*25;g.Player.psychicLeft()!=want {t.Fatalf("meter=%d want=%d",g.Player.psychicLeft(),want)}
    if err:=g.act("retreat","","");err!=nil {t.Fatal(err)}
  }
  g.startEncounter()
@@ -23,7 +23,7 @@ func TestPsychicMeterDailyLimitAndRecharge(t *testing.T) {
  if g.Enemy.HP!=before {t.Fatal("rejected blast damaged enemy")}
  if err:=g.act("retreat","","");err!=nil {t.Fatal(err)}
  if err:=g.act("clockout","","");err!=nil {t.Fatal(err)}
- if g.Player.psychicLeft()!=100 {t.Fatal("meter didn't recharge")}
+ if g.Player.psychicLeft()!=300 {t.Fatal("meter didn't recharge")}
 }
 
 func TestRobotChargeResetsAfterShotAndCaps(t *testing.T) {
@@ -44,7 +44,7 @@ func TestPsychicEnergySaveZeroAndLegacy(t *testing.T) {
  var old Game
  if err:=json.Unmarshal([]byte(`{"phase":"hq","player":{"name":"Legacy","class":"psychic","hp":200,"level":1}}`),&old);err!=nil {t.Fatal(err)}
  old.Player.normalizeLegacyClassResources()
- if old.Player.psychicLeft()!=100 {t.Fatal("legacy character was not initialized")}
+ if old.Player.psychicLeft()!=300 {t.Fatal("legacy character was not initialized")}
  zero:=0;old.Player.PsychicEnergy=&zero
  data,err:=json.Marshal(old);if err!=nil {t.Fatal(err)}
  var restored Game

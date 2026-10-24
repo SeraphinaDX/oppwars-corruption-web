@@ -14,6 +14,8 @@ type RedRoomResult struct {
 	InfectionGained  bool   `json:"infectionGained"`
 	TotalInfections  int    `json:"totalInfections"`
 	HealthRecovered  int    `json:"healthRecovered"`
+	PsychicEnergyRestored int `json:"psychicEnergyRestored"`
+	TurnsSpent int `json:"turnsSpent"`
 	Cost             int    `json:"cost"`
 }
 
