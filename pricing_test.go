@@ -27,7 +27,7 @@ func TestPropertyRoomPrices(t *testing.T) {
    if err:=g.act(tc.action,"","");err!=nil {t.Fatal(err)}
    if got:=startMoney-g.Player.Money;got!=tc.price {t.Fatalf("charged $%d, expected $%d",got,tc.price)}
    if got:=tc.count(&g.Player);got!=1 {t.Fatalf("received %d units, expected 1",got)}
-   g.Player.RenegadeRank=10
+   g.Player.RenegadeRank=renegadeShopRank
    if err:=g.act(tc.action,"","");err!=nil {t.Fatal(err)}
    if got:=tc.count(&g.Player);got!=3 {t.Fatalf("renegade purchase left %d units, expected 3",got)}
    if got:=startMoney-g.Player.Money;got!=2*tc.price {t.Fatalf("wrong renegade price: %d",got)}
