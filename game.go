@@ -218,25 +218,7 @@ func (g *Game) act(action, name, class string) error {
 			g.log(fmt.Sprintf("The doctor clears %s for duty: %d infection(s) treated for $%d.", p.Name, cured, cost))
 			return nil
 		case "clockout":
-			if p.Days <= 1 {
-				p.Days = 0
-				g.Phase = "gameover"
-				g.EndReason = "Your 30-day tour of duty is complete. Retirement is probably safer."
-				g.log(g.EndReason)
-				return nil
-			}
-			p.Days--
-			if p.Class == "psychic" {
-				p.refillPsychicEnergy()
-				g.log("Psychic meter recharged: 4 blasts available for the new shift.")
-			}
-			if p.clearEffects() {
-				g.log("End of shift: all temporary effects have worn off.")
-			}
-			p.Bumfights = p.shiftPatrols()
-			income := p.shiftIncome()
-			p.Money += income
-			g.log(fmt.Sprintf("New shift: +$%d net income. %d days remaining.", income, p.Days))
+			g.advanceShift(false)
 			return nil
 		default:
 			return errors.New("action unavailable at HQ")
@@ -348,11 +330,7 @@ func (g *Game) act(action, name, class string) error {
 			return errors.New("invalid combat action")
 		}
 		if p.HP <= 0 {
-			p.HP = 0
-			g.Enemy = nil
-			g.Phase = "gameover"
-			g.EndReason = fmt.Sprintf("%s was defeated on patrol. Your pension has been reassigned.", p.Name)
-			g.log(g.EndReason)
+			g.losePatrol(g.Enemy.Name)
 			return nil
 		}
 		if g.Enemy.HP <= 0 {
@@ -429,6 +407,52 @@ func (g *Game) buy(price int, item string, units int) error {
 	g.log(fmt.Sprintf("Property room: bought %d %s for $%d.", units, item, price))
 	return nil
 }
+// advanceShift completes a shift. A defeat forfeits the day's remaining patrols
+// and earnings but is not a campaign-ending condition. Hospital recovery restores
+// half of maximum HP, so the officer is playable on the following day.
+// Normal clock-out retains the original income and HP rules.
+func (g *Game) advanceShift(defeated bool) {
+	p := &g.Player
+	if defeated {
+		p.HP = max(1, p.maxHP()/2)
+		g.Enemy = nil
+		g.Event = nil
+		p.ClassPower = 1
+	}
+	if p.Days <= 1 {
+		p.Days = 0
+		g.Phase = "gameover"
+		g.EndReason = "Your 30-day tour of duty is complete. Retirement is probably safer."
+		g.log(g.EndReason)
+		return
+	}
+	p.Days--
+	if p.Class == "psychic" {
+		p.refillPsychicEnergy()
+		g.log("Psychic meter recharged: 4 blasts available for the new shift.")
+	}
+	if p.clearEffects() {
+		g.log("End of shift: all temporary effects have worn off.")
+	}
+	p.Bumfights = p.shiftPatrols()
+	g.Phase = "hq"
+	if defeated {
+		g.log(fmt.Sprintf("Forced clock-out: %s returns next shift with %d HP. Remaining patrols and shift pay forfeited. %d days remaining.", p.Name, p.HP, p.Days))
+		return
+	}
+	income := p.shiftIncome()
+	p.Money += income
+	g.log(fmt.Sprintf("New shift: +$%d net income. %d days remaining.", income, p.Days))
+}
+
+// losePatrol handles both ordinary enemy defeats and lethal department ambushes.
+// The campaign only ends when the 30-day tour reaches its natural last shift.
+func (g *Game) losePatrol(opponent string) {
+	g.Player.HP = 0
+	g.log(fmt.Sprintf("%s was defeated by %s and taken to the medical wing.", g.Player.Name, opponent))
+	g.advanceShift(true)
+}
+
 func (g *Game) startEncounter() {
 	p := &g.Player
 	maxHP := 100 * p.Level
@@ -445,10 +469,7 @@ func (g *Game) startEncounter() {
 		p.HP -= hit
 		g.log(fmt.Sprintf("Captain Grimstead arranges a drive-by against %s, costing %d HP.", p.Name, hit))
 		if p.HP <= 0 {
-			p.HP = 0
-			g.Phase = "gameover"
-			g.Enemy = nil
-			g.EndReason = fmt.Sprintf("%s didn't survive the department's politics.", p.Name)
+			g.losePatrol("Captain Grimstead's ambush")
 		}
 	}
 }

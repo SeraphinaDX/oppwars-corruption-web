@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.6.1
+# OPP Wars: Corruption — Web Edition v0.6.2
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,7 +27,7 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.6.1
+## What's in v0.6.2
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -36,6 +36,15 @@ Custom listen address and save location:
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.6.2 — defeat ends your shift
+
+- Losing a fight now forces an early clock-out instead of instantly ending the entire campaign. Department ambushes follow the same rule.
+- The defeated officer gives up remaining patrol assignments and receives **no shift income** from the forfeited day. There is **no cash or XP reward** for the lost fight.
+- After hospital recovery, officers return on the following day with **half their maximum HP** (minimum 1 HP). Unused drug effects are cleared, Robot charge is reset, and the Psychic meter refills for the new shift.
+- Untreated infections and previous inventory remain intact. The next day's patrol limit still respects infection penalties.
+- Losing a fight on the campaign's final day completes the 30-day tour normally instead of starting a nonexistent next shift.
+- Combat log reports the defeated officer and opponent plus the forced clock-out penalty; no changes to the saved-game format.
 
 ## v0.6.1 — enemy health bar layout fix
 
