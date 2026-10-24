@@ -39,7 +39,7 @@ Custom listen address and save location:
 
 ## v0.3.0 — class specials, pricing, and visible version numbers
 
-- **Robot — Charged Shot:** uses the former charge mechanic. Charge builds to a maximum 4× multiplier, and resets after firing.
+- **Robot — Charged Shot:** uses the former charge mechanic. Charge builds to a maximum 4× multiplier, and resets after firing. A normal attack builds charge; firing the special no longer accidentally recharges immediately.
 - **Psychic — Psychic Blast:** always does 2× normal attack damage. A 100-PSI meter pays 25 PSI per blast (four uses per shift); the meter refills at clock-out and depleted specials are disabled.
 - **Psychopath — Chow Down:** retains damage and healing equal to half the damage dealt.
 - **Property Room prices:** cocaine $400 per unit, fentanyl $150 per unit, and LSD $75 per tab. Each purchase provides one unit; Renegade rank 10+ doubles that quantity at the same price, subject to the 20-unit limit.
