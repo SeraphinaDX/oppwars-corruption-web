@@ -107,7 +107,7 @@ func (s *server) getSession(w http.ResponseWriter, r *http.Request) (string, *en
 }
 func validGame(g *Game) bool {
 	switch g.Phase {
-	case "setup", "hq", "event", "combat", "gameover":
+	case "setup", "hq", "event", "combat", "redroom_result", "gameover":
 	default:
 		return false
 	}
@@ -115,6 +115,9 @@ func validGame(g *Game) bool {
 		return false
 	}
 	if g.Phase == "event" && g.Event == nil {
+		return false
+	}
+	if g.Phase == "redroom_result" && g.RedRoom == nil {
 		return false
 	}
 	return true
