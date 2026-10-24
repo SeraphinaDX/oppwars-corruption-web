@@ -37,7 +37,8 @@ type Player struct {
 	ParagonRank        int    `json:"paragonRank"`
 	RenegadeRank       int    `json:"renegadeRank"`
 	Bumfights          int    `json:"fightsLeft"`
-	ClassPower         int    `json:"classPower"`
+	ClassPower         int    `json:"classPower"` // Robot Charged Shot multiplier (1–4)
+	PsychicEnergy      *int   `json:"psychicEnergy,omitempty"` // nil identifies pre-meter saves
 	CocaineEncounters  int    `json:"cocaineEncounters"`
 	FentanylEncounters int    `json:"fentanylEncounters"`
 	LSDEncounters      int    `json:"lsdEncounters"`
@@ -113,6 +114,9 @@ func (g *Game) act(action, name, class string) error {
 			return errors.New("choose a class")
 		}
 		g.Player = Player{Name: name, Class: class, HP: starterHP, Attack: 40, Money: starterMoney, Days: 30, Level: 1, Bumfights: fightsPerDay, ClassPower: 1}
+		if class == "psychic" {
+			g.Player.refillPsychicEnergy()
+		}
 		g.Phase = "hq"
 		g.log(fmt.Sprintf("Officer %s joined the force as a %s. Captain Grimstead looks worried.", name, class))
 		return nil
@@ -200,6 +204,10 @@ func (g *Game) act(action, name, class string) error {
 				return nil
 			}
 			p.Days--
+			if p.Class == "psychic" {
+				p.refillPsychicEnergy()
+				g.log("Psychic meter recharged: 4 blasts available for the new shift.")
+			}
 			if p.clearEffects() {
 				g.log("End of shift: all temporary effects have worn off.")
 			}
@@ -277,16 +285,21 @@ func (g *Game) act(action, name, class string) error {
 				g.log(fmt.Sprintf("You miss! The enemy hits you with %s for %d HP.", attacks[rand.IntN(len(attacks))], hit))
 			}
 		case "special":
-			power := p.ClassPower
-			if power < 1 {
-				power = 1
-			}
-			damage := power * p.Attack * p.Level
-			label := "Psychic Blast"
+			// Charged Shot charges from 1x to 4x over combat turns;
+			// Psychic Blast is always 2x damage but costs 25 of 100 daily PSI.
+			damage := p.Attack * p.Level
+			label := "Chow Down"
 			switch p.Class {
 			case "robot":
+				power := max(1, min(maxClassPower, p.ClassPower))
+				damage *= power
+				label = fmt.Sprintf("Charged Shot (%dx)", power)
+			case "psychic":
+				if !p.spendPsychicEnergy() {
+					return errors.New("not enough psychic energy — clock out to recharge")
+				}
 				damage *= 2
-				label = "Charged Shot"
+				label = "Psychic Blast"
 			case "psychopath":
 				label = "Chow Down"
 			}
@@ -302,7 +315,9 @@ func (g *Game) act(action, name, class string) error {
 			}
 			g.Enemy.HP -= damage
 			g.log(fmt.Sprintf("%s! %d damage dealt.", label, damage))
-			p.ClassPower = 1
+			if p.Class == "robot" {
+				p.ClassPower = 1 // A fired Charged Shot must build power again.
+			}
 		default:
 			return errors.New("invalid combat action")
 		}
@@ -339,7 +354,7 @@ func (g *Game) act(action, name, class string) error {
 			}
 			return nil
 		}
-		if p.Class == "psychic" {
+		if p.Class == "robot" {
 			p.ClassPower = min(maxClassPower, p.ClassPower+1)
 		}
 		return nil
@@ -386,7 +401,7 @@ func (g *Game) startEncounter() {
 	p := &g.Player
 	maxHP := 100 * p.Level
 	g.Enemy = &Encounter{Name: enemies[rand.IntN(len(enemies))], HP: maxHP, MaxHP: maxHP}
-	if p.Class == "psychic" {
+	if p.Class == "robot" {
 		p.ClassPower = min(maxClassPower, p.ClassPower+1)
 	}
 	g.Phase = "combat"

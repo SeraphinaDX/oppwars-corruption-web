@@ -86,7 +86,7 @@ func TestVictoryAndLoss(t *testing.T) {
 	if err := g.act("special", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	// Charged Shot: attack 40 * level 1 * power 1 * 2 = 80.
+	// Charged Shot begins at 2x after entering combat.
 	if g.Enemy == nil || g.Enemy.HP != 20 {
 		t.Fatal("unexpected charged shot damage", g.Enemy)
 	}
@@ -113,8 +113,8 @@ func TestPsionicAndPsychopath(t *testing.T) {
 		g := newGame()
 		_ = g.act("start", "Unit", cls)
 		g.startEncounter()
-		if cls == "psychic" && g.Player.ClassPower != 2 {
-			t.Fatal("psychic charge should increase")
+		if cls == "psychic" && g.Player.psychicLeft() != 100 {
+			t.Fatal("psychic must start with full meter")
 		}
 		if cls == "psychopath" {
 			g.Player.HP = 50
@@ -122,7 +122,7 @@ func TestPsionicAndPsychopath(t *testing.T) {
 		if err := g.act("special", "", ""); err != nil {
 			t.Fatal(err)
 		}
-		if cls == "psychic" && (g.Phase != "combat" || g.Enemy.HP != 20) {
+		if cls == "psychic" && (g.Phase != "combat" || g.Enemy.HP != 20 || g.Player.psychicLeft() != 75) {
 			t.Fatal("unexpected psychic ability damage")
 		}
 		if cls == "psychopath" && g.Player.HP != 70 {

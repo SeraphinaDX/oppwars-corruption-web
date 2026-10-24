@@ -7,6 +7,8 @@ const (
 	hpPerLevel         = 40
 	maxOfficerHP       = 720
 	maxClassPower      = 4
+	maxPsychicEnergy   = 100
+	psychicBlastCost   = 25 // Exactly four double-damage blasts per shift
 	maxInventoryEach   = 20
 	maxClubShares      = 5
 	cocaineEncounters  = 3
@@ -16,6 +18,38 @@ const (
 	victoryBasePay     = 300
 	victoryPayPerLevel = 75
 )
+
+// Psychic energy is a fixed daily resource: no passive regeneration in combat.
+// Keeping the field optional distinguishes old saves (nil) from a depleted meter
+// (pointer to zero), so reloading does not refill exhausted characters.
+func (p *Player) psychicLeft() int {
+	if p.Class != "psychic" {
+		return 0
+	}
+	if p.PsychicEnergy == nil {
+		return maxPsychicEnergy // Legacy save with no meter yet.
+	}
+	return max(0, min(maxPsychicEnergy, *p.PsychicEnergy))
+}
+func (p *Player) refillPsychicEnergy() {
+	value := maxPsychicEnergy
+	p.PsychicEnergy = &value
+}
+func (p *Player) spendPsychicEnergy() bool {
+	if p.Class != "psychic" || p.psychicLeft() < psychicBlastCost {
+		return false
+	}
+	value := p.psychicLeft() - psychicBlastCost
+	p.PsychicEnergy = &value
+	return true
+}
+func (p *Player) normalizeLegacyClassResources() {
+	if p.Class != "psychic" {
+		return
+	}
+	value := p.psychicLeft()
+	p.PsychicEnergy = &value
+}
 
 // Effects measure completed encounters, not button clicks. Only one kind of
 // effect can be active. This deliberately disallows stacking different drugs.
