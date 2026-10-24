@@ -29,3 +29,14 @@
 
 /* Enemy dialogue stays legible on narrow and wide combat panels. */
 .enemy-quote{margin:10px 0 4px;padding:10px 13px;border-left:3px solid var(--pink);background:#1b253a;color:#f7b0d6;font-size:13px;font-style:italic;line-height:1.5;overflow-wrap:anywhere}
+
+/* v0.6.0 — dedicated Red Room receipt, readable across desktop/mobile. */
+.redroom-story{line-height:1.85;font-size:14px;color:#e7dcea;max-width:65ch}
+.redroom-result{border:1px solid #607094;border-left:4px solid #6addab;border-radius:7px;background:linear-gradient(145deg,#192735,#132031);padding:20px;margin:18px 0}
+.redroom-result.bad{border-left-color:#f77699;background:linear-gradient(145deg,#332031,#1e2232)}
+.redroom-result .kicker{color:#adc6de}
+.redroom-result h2{font-size:20px;line-height:1.3;letter-spacing:.7px;color:#8bffcd;margin:8px 0}
+.redroom-result.bad h2{color:#ff96b5}
+.redroom-result p{line-height:1.75;color:#d5dfeb;margin:8px 0 16px}
+.redroom-result .row{max-width:480px}
+@media(max-width:620px){.redroom-result{padding:14px}.redroom-result h2{font-size:17px}}
