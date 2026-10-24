@@ -83,6 +83,7 @@ func (s *server) getSession(w http.ResponseWriter, r *http.Request) (string, *en
 		if readErr == nil {
 			var g Game
 			if json.Unmarshal(data, &g) == nil && validGame(&g) {
+				g.Player.migratePsychicEnergy(g.Version)
 				g.Player.normalizeLegacyClassResources()
 				g.Version = gameVersion // Old save files should display the current release.
 				e := &entry{game: &g, lastActive: now}
