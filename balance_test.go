@@ -135,7 +135,7 @@ func TestTemporaryXPAndStockLimits(t *testing.T) {
 	if err := g.act("buy_lsd", "", ""); err == nil {
 		t.Fatal("allowed buying beyond inventory limit")
 	}
-	g.Player.RenegadeRank = 10
+	g.Player.RenegadeRank = renegadeShopRank
 	g.Player.LSD = 19
 	if err := g.act("buy_lsd", "", ""); err == nil {
 		t.Fatal("renegade doubled purchase should respect limit")
