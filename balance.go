@@ -84,9 +84,11 @@ func (p *Player) migratePsychicEnergy(savedVersion string) {
 		return
 	}
 	var major, minor, patch int
-	n, err := fmt.Sscanf(savedVersion, "%d.%d.%d", &major, &minor, &patch)
-	if err != nil || n != 3 || major != 0 || minor >= 8 {
-		return
+	if savedVersion != "" {
+		n, err := fmt.Sscanf(savedVersion, "%d.%d.%d", &major, &minor, &patch)
+		if err != nil || n != 3 || major != 0 || minor >= 8 {
+			return
+		}
 	}
 	energy := max(0, min(legacyPsychicEnergyMax, *p.PsychicEnergy))*maxPsychicEnergy/legacyPsychicEnergyMax
 	p.PsychicEnergy = &energy
