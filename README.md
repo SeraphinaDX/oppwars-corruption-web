@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.2.0
+# OPP Wars: Corruption — Web Edition v0.3.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,7 +27,7 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.2.0
+## What's in v0.3.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -37,6 +37,16 @@ Custom listen address and save location:
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
 
+## v0.3.0 — class specials, pricing, and visible version numbers
+
+- **Robot — Charged Shot:** uses the former charge mechanic. Charge builds to a maximum 4× multiplier, and resets after firing.
+- **Psychic — Psychic Blast:** always does 2× normal attack damage. A 100-PSI meter pays 25 PSI per blast (four uses per shift); the meter refills at clock-out and depleted specials are disabled.
+- **Psychopath — Chow Down:** retains damage and healing equal to half the damage dealt.
+- **Property Room prices:** cocaine $400 per unit, fentanyl $150 per unit, and LSD $75 per tab. Each purchase provides one unit; Renegade rank 10+ doubles that quantity at the same price, subject to the 20-unit limit.
+- Effect strengths and encounter durations remain unchanged. Reduced item costs align them with the early-game $300 victory reward, rather than forcing players to purchase upgrades that barely repay their cost.
+- **Version display:** the server exposes the canonical version from `version.go` and the browser reads it dynamically. New and existing sessions show v0.3.0.
+- **For every new release:** bump `gameVersion` in `version.go`, update the README heading and changelog, and run the tests before tagging.
+
 ## v0.2.0 balance and LSD
 
 - **LSD (Reality Distortion):** activate one tab at HQ for 2 completed patrol encounters; 25% chance to dodge a counterattack on a missed attack, 20% chance that a hit (including class specials) does half damage. During activation the skyline changes colour; animation honours reduced-motion settings.
@@ -44,7 +54,7 @@ Custom listen address and save location:
 - **Fentanyl (Reckless Strength):** one unit grants +25% normal attack damage, but enemy counterattacks inflict +5 HP, for 2 encounters.
 - Active effects do not stack, cannot be refreshed early, and end after their encounter count is used or when clocking out. Retreat counts as an encounter. Inventory max is 20 of each.
 - Money awarded per victory is **$300 + $75 per level above 1**, without multipliers on existing cash. Club shares max at 5, healing is capped by level (200 + 40 HP per level above 1; hard max 720), and Psychic charge caps at 4.
-- Old v0.1.0 JSON saves load normally. Quantities from legacy saves above shop caps remain in inventory until spent; you cannot buy beyond the cap.
+- Old v0.1.0 and v0.2.0 JSON saves load normally. Quantities from legacy saves above shop caps remain in inventory until spent; you cannot buy beyond the cap.
 
 These are fictional game mechanics and aren't intended as depictions of real drug effects.
 
