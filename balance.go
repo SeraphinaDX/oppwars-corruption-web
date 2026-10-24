@@ -47,6 +47,11 @@ const (
 	victoryPayPerLevel = 75
 )
 
+// Keeping perk eligibility centralized allows both karma paths to be tested
+// at the new boundary, without relying on random department ambush rolls.
+func (p *Player) paragonAmbushEligible() bool { return p.ParagonRank >= paragonAmbushRank }
+func (p *Player) renegadeShopPerk() bool { return p.RenegadeRank >= renegadeShopRank }
+
 // Psychic energy is a fixed daily resource: no passive regeneration in combat.
 // Keeping the field optional distinguishes old saves (nil) from a depleted meter
 // (pointer to zero), so reloading does not refill exhausted characters.
