@@ -419,12 +419,12 @@ func (g *Game) startEncounter() {
 	if p.ParagonRank == 10 && rand.IntN(4) == 1 {
 		hit := min(50*p.Level, p.maxHP()/3)
 		p.HP -= hit
-		g.log(fmt.Sprintf("Captain Grimstead arranged a drive-by. You lost %d HP.", hit))
+		g.log(fmt.Sprintf("Captain Grimstead arranges a drive-by against %s, costing %d HP.", p.Name, hit))
 		if p.HP <= 0 {
 			p.HP = 0
 			g.Phase = "gameover"
 			g.Enemy = nil
-			g.EndReason = "You didn't survive the department's politics."
+			g.EndReason = fmt.Sprintf("%s didn't survive the department's politics.", p.Name)
 		}
 	}
 }
