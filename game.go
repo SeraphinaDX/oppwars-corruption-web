@@ -63,10 +63,11 @@ type Choice struct {
 
 type Game struct {
 	Version   string     `json:"version"` // Release version presented in the browser
-	Phase     string     `json:"phase"` // setup, hq, combat, event, gameover
+	Phase     string     `json:"phase"` // setup, hq, combat, event, redroom_result, gameover
 	Player    Player     `json:"player"`
 	Enemy     *Encounter `json:"enemy,omitempty"`
 	Event     *Decision  `json:"event,omitempty"`
+	RedRoom   *RedRoomResult `json:"redRoom,omitempty"`
 	Messages  []string   `json:"messages"`
 	Turn      int        `json:"turn"`
 	EndReason string     `json:"endReason,omitempty"`
@@ -171,20 +172,37 @@ func (g *Game) act(action, name, class string) error {
 			g.log("Invested $2,000 in the Red Room. Each share pays $500 per shift.")
 			return nil
 		case "nightlife":
-			if p.Money < 100 {
+			const price = 100
+			if p.Money < price {
 				return errors.New("not enough cash")
 			}
-			p.Money -= 100
+			// Resolve all consequences exactly once, before entering the result
+			// phase. A refresh only rereads the saved receipt.
+			oldHP := p.HP
+			protected := p.Condoms > 0
+			p.Money -= price
 			p.restoreHP(200)
-			if p.Condoms > 0 {
+			if protected {
 				p.Condoms--
-				g.log(fmt.Sprintf("%s leaves the Red Room in one piece. The doctor can take the night off.", p.Name))
-			} else if rand.IntN(100) < 50 {
+			}
+			infected := !protected && rand.IntN(100) < 50
+			if infected {
 				p.Infections++
 				g.log(fmt.Sprintf("%s leaves the Red Room with an unwelcome souvenir. The patrol sergeant notices the limp.", p.Name))
+			} else if protected {
+				g.log(fmt.Sprintf("%s leaves the Red Room in one piece. The doctor can take the night off.", p.Name))
 			} else {
 				g.log(fmt.Sprintf("%s leaves the Red Room feeling better, and with no new complaints.", p.Name))
 			}
+			g.RedRoom = &RedRoomResult{
+				Scene: newRedRoomScene(p.Name),
+				Protected: protected,
+				InfectionGained: infected,
+				TotalInfections: p.Infections,
+				HealthRecovered: p.HP - oldHP,
+				Cost: price,
+			}
+			g.Phase = "redroom_result"
 			return nil
 		case "clinic":
 			if p.Infections == 0 {
@@ -223,6 +241,14 @@ func (g *Game) act(action, name, class string) error {
 		default:
 			return errors.New("action unavailable at HQ")
 		}
+	case "redroom_result":
+		if action != "continue" {
+			return errors.New("finish your Red Room encounter before returning to duty")
+		}
+		g.RedRoom = nil
+		g.Phase = "hq"
+		g.log(fmt.Sprintf("%s returns from the Red Room to headquarters.", p.Name))
+		return nil
 	case "event":
 		if action != "choose_renegade" && action != "choose_paragon" {
 			return errors.New("choose your response")
