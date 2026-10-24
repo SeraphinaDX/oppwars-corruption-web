@@ -70,7 +70,7 @@ function nightlifePage(g) {
   const p=g.player;
   return heading('♧ DOWNTOWN / RED ROOM','The Red Room','The neon glows, the music pounds, and nobody wants to see your badge.')+
     card('AFTER HOURS',`<p>The Red Room has adult company for hire. A private encounter costs $100. The house sells condoms, and the clinic opens early for anyone who needs it.</p><div class="buttons">${actionButton('nightlife','♥ BANG A PROSTITUTE • $100','primary',p.money<100)}${actionButton('buy_condoms','+ 5 CONDOMS • $10','',p.money<10)}</div>`)+
-    card('CLUB INVESTMENT',`<p>The manager is offering a slice of the business for $2,000. Shareholders get a cut of the takings every shift, assuming the manager doesn't run off with the till.</p>${row('Your club shares',p.clubShares)}${row('Your shift dividend',`${fmt(Math.min(p.clubShares,5)*500)}`)}<div class="buttons">${actionButton('buy_club','◆ BUY A SHARE • $2,000','cyan full',p.clubShares>=5||p.money<2000)}</div>`)+reports(g);
+    card('CLUB INVESTMENT',`<p>The manager is offering a slice of the business for $2,000. Shareholders get a cut of the takings every shift, assuming the manager doesn't run off with the till.</p>${row('Your club shares',p.clubShares)}${row('Your shift dividend',`$${fmt(Math.min(p.clubShares,5)*500)}`)}<div class="buttons">${actionButton('buy_club','◆ BUY A SHARE • $2,000','cyan full',p.clubShares>=5||p.money<2000)}</div>`)+reports(g);
 }
 function doctorPage(g) {
   const p=g.player;
