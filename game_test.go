@@ -39,7 +39,7 @@ func TestShopAndClockOut(t *testing.T) {
 	if err := g.act("buy_cocaine", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if g.Player.Cocaine != 1 || g.Player.Money != 4000 {
+	if g.Player.Cocaine != 1 || g.Player.Money != 4600 {
 		t.Fatal("incorrect cocaine purchase", g.Player)
 	}
 	if err := g.act("buy_fentanyl", "", ""); err != nil {
@@ -48,14 +48,14 @@ func TestShopAndClockOut(t *testing.T) {
 	if err := g.act("buy_lsd", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if g.Player.Fentanyl != 1 || g.Player.LSD != 5 {
+	if g.Player.Fentanyl != 1 || g.Player.LSD != 1 {
 		t.Fatal("unexpected inventory", g.Player)
 	}
 	g.Player.RenegadeRank = 10
 	if err := g.act("buy_lsd", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if g.Player.LSD != 15 {
+	if g.Player.LSD != 3 {
 		t.Fatal("renegade doubling did not work", g.Player.LSD)
 	}
 	g.Player.Infections = 2

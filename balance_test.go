@@ -17,8 +17,8 @@ func TestLSDActivationAndExpiration(t *testing.T) {
 	if err := g.act("use_lsd", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if g.Player.LSD != 4 || g.Player.LSDEncounters != 2 {
-		t.Fatalf("LSD should consume exactly one tab and last two encounters: %+v", g.Player)
+	if g.Player.LSD != 0 || g.Player.LSDEncounters != 2 {
+		t.Fatalf("LSD purchase supplies one tab, which should be consumed and last two encounters: %+v", g.Player)
 	}
 	if err := g.act("use_lsd", "", ""); err == nil {
 		t.Fatal("re-activation stacked an effect")
@@ -41,8 +41,11 @@ func TestLSDActivationAndExpiration(t *testing.T) {
 	if g.Player.LSDEncounters != 0 || g.Phase != "hq" {
 		t.Fatalf("LSD did not expire on victory: %+v", g)
 	}
+	if err := g.act("buy_lsd", "", ""); err != nil {
+		t.Fatal("should be able to buy a replacement tab", err)
+	}
 	if err := g.act("use_lsd", "", ""); err != nil {
-		t.Fatal("should be able to use second tab", err)
+		t.Fatal("should be able to use replacement tab", err)
 	}
 	if err := g.act("clockout", "", ""); err != nil {
 		t.Fatal(err)
@@ -125,7 +128,7 @@ func TestTemporaryXPAndStockLimits(t *testing.T) {
 	if err := g.act("special", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if g.Player.Experience != 250 || g.Player.Money != 4300 || g.Player.CocaineEncounters != 2 {
+	if g.Player.Experience != 250 || g.Player.Money != 4900 || g.Player.CocaineEncounters != 2 {
 		t.Fatalf("unexpected reward and effect countdown: %+v", g.Player)
 	}
 	g.Player.LSD = 20
@@ -133,7 +136,7 @@ func TestTemporaryXPAndStockLimits(t *testing.T) {
 		t.Fatal("allowed buying beyond inventory limit")
 	}
 	g.Player.RenegadeRank = 10
-	g.Player.LSD = 12
+	g.Player.LSD = 19
 	if err := g.act("buy_lsd", "", ""); err == nil {
 		t.Fatal("renegade doubled purchase should respect limit")
 	}

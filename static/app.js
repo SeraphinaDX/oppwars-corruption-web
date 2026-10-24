@@ -4,6 +4,7 @@ const state = { game: null, panel: 'patrol', picked: 'psychic', busy: false };
 const el = id => document.getElementById(id);
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n || 0).toLocaleString();
+const shopPrices = Object.freeze({cocaine:400, fentanyl:150, lsd:75}); // Mirrors backend balance.go
 const actionButton = (action, label, style = '', disabled = false) => `<button class="btn ${style}" data-action="${action}" ${disabled ? 'disabled' : ''}>${escapeHTML(label)}</button>`;
 const card = (title, body) => `<section class="card"><h2>${escapeHTML(title)}</h2>${body}</section>`;
 const heading = (eyebrow, title, description) => `<div class="kicker">${escapeHTML(eyebrow)}</div><h1 class="title">${escapeHTML(title)}</h1><p class="description">${escapeHTML(description)}</p>`;
@@ -52,17 +53,17 @@ function hqPage(g) {
 function propertyPage(g) {
   const p=g.player, active=activeEffect(p);
   const items=[
-    ['cocaine','Cocaine','$1,000 / gram','XP Rush: +25% XP (max +150) for 3 encounters.'],
-    ['fentanyl','Fentanyl','$500 / bag','Reckless Strength: +25% normal damage but +5 retaliation damage for 2 encounters.'],
-    ['lsd','LSD','$100 / five tabs','Reality Distortion: 25% chance to dodge counterattacks, but 20% chance to deal half damage for 2 encounters.']
+    ['cocaine','Cocaine',`${fmt(shopPrices.cocaine)} / gram`,'XP Rush: +25% XP (max +150) for 3 encounters.'],
+    ['fentanyl','Fentanyl',`${fmt(shopPrices.fentanyl)} / bag`,'Reckless Strength: +25% normal damage but +5 retaliation damage for 2 encounters.'],
+    ['lsd','LSD',`${fmt(shopPrices.lsd)} / tab`,'Reality Distortion: 25% chance to dodge counterattacks, but 20% chance to deal half damage for 2 encounters.']
   ];
   return heading('◫ EVIDENCE DIVISION / PROPERTY ROOM','Property room','Everything is available. Internal Affairs is unavailable.')+
     effectPanel(p)+
     card('TEMPORARY EFFECTS',`<p class="muted">Effects are activated manually at HQ, consume one item, and expire after completed patrol encounters or clock-out. Only one may run at a time. They never stack with inventory quantity.</p>`+
     items.map(([id,label,price,desc])=>{
       const count=p[id]||0;
-      const units=id==='lsd'?5:1;
-      return `<div class="shop-item"><div class="shop-description"><strong>${escapeHTML(label)}</strong><span class="hint">${escapeHTML(price)} · ${escapeHTML(desc)}<br>IN LOCKER: ${fmt(count)} / 20</span></div><div class="shop-actions">${actionButton('buy_'+id,'BUY','small',p.money<(id==='cocaine'?1000:id==='fentanyl'?500:100)||count+units*(p.renegadeRank>=10?2:1)>20)}${actionButton('use_'+id,'ACTIVATE','cyan small',count<1||!!active)}</div></div>`;
+      const units=1;
+      return `<div class="shop-item"><div class="shop-description"><strong>${escapeHTML(label)}</strong><span class="hint">${escapeHTML(price)} · ${escapeHTML(desc)}<br>IN LOCKER: ${fmt(count)} / 20</span></div><div class="shop-actions">${actionButton('buy_'+id,'BUY','small',p.money<shopPrices[id]||count+units*(p.renegadeRank>=10?2:1)>20)}${actionButton('use_'+id,'ACTIVATE','cyan small',count<1||!!active)}</div></div>`;
     }).join('')+`<p class="hint">Renegade rank 10+ doubles shop quantities, subject to the 20-unit inventory limit. These are fictional game mechanics, not real drug effects.</p>`)+reports(g);
 }
 function nightlifePage(g) {
@@ -87,6 +88,7 @@ const pHasLSD = g => g.phase!=='setup' && g.player.lsdEncounters>0;
 function render() {
  const g=state.game;
  if(!g) return;
+ el('game-version').textContent=`• v${g.version || 'unknown'}`;
  let page;
  if(g.phase==='setup') page=setupPage();
  else if(g.phase!=='hq') page=patrolPage(g);

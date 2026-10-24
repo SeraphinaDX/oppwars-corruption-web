@@ -11,6 +11,11 @@ const (
 	psychicBlastCost   = 25 // Exactly four double-damage blasts per shift
 	maxInventoryEach   = 20
 	maxClubShares      = 5
+	// Property Room prices (cash for one unit; Renegade purchases double units).
+	cocainePrice      = 400
+	fentanylPrice     = 150
+	lsdPrice          = 75
+	lsdPurchaseUnits  = 1
 	cocaineEncounters  = 3
 	fentanylEncounters = 2
 	lsdEncounters      = 2

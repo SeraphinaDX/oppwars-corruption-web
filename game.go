@@ -61,6 +61,7 @@ type Choice struct {
 }
 
 type Game struct {
+	Version   string     `json:"version"` // Release version presented in the browser
 	Phase     string     `json:"phase"` // setup, hq, combat, event, gameover
 	Player    Player     `json:"player"`
 	Enemy     *Encounter `json:"enemy,omitempty"`
@@ -86,7 +87,7 @@ var events = []Decision{
 }
 
 func newGame() *Game {
-	return &Game{Phase: "setup", Messages: []string{"OPP HQ terminal ready. Report for duty."}}
+	return &Game{Version: gameVersion, Phase: "setup", Messages: []string{"OPP HQ terminal ready. Report for duty."}}
 }
 
 func (g *Game) log(msg string) {
@@ -142,11 +143,11 @@ func (g *Game) act(action, name, class string) error {
 			g.startEncounter()
 			return nil
 		case "buy_cocaine":
-			return g.buy(1000, "cocaine", 1)
+			return g.buy(cocainePrice, "cocaine", 1)
 		case "buy_fentanyl":
-			return g.buy(500, "fentanyl", 1)
+			return g.buy(fentanylPrice, "fentanyl", 1)
 		case "buy_lsd":
-			return g.buy(100, "lsd", 5)
+			return g.buy(lsdPrice, "lsd", lsdPurchaseUnits)
 		case "use_cocaine", "use_fentanyl", "use_lsd":
 			return g.useEffect(action)
 		case "buy_condoms":
@@ -354,7 +355,8 @@ func (g *Game) act(action, name, class string) error {
 			}
 			return nil
 		}
-		if p.Class == "robot" {
+		if p.Class == "robot" && action == "fight" {
+			// Charge grows only after normal combat turns. Fired specials reset to 1.
 			p.ClassPower = min(maxClassPower, p.ClassPower+1)
 		}
 		return nil
