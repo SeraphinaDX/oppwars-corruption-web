@@ -2,13 +2,19 @@
 // Balance rules for fictional, temporary contraband status effects.
 package main
 
+import "fmt"
+
 const (
 	baseMaxHP          = 200
 	hpPerLevel         = 40
 	maxOfficerHP       = 720
 	maxClassPower      = 4
-	maxPsychicEnergy   = 100
-	psychicBlastCost   = 25 // Exactly four double-damage blasts per shift
+	maxPsychicEnergy   = 300
+	psychicBlastCost   = 25 // 12 double-damage blasts per shift.
+	psychicRedRoomRestore = 150 // Six additional blasts per paid Red Room visit, capped at 12.
+	legacyPsychicEnergyMax = 100 // Meter size in saves from releases before v0.8.0.
+	paragonAmbushRank = 100      // Formerly rank 10, now requires about four full shifts.
+	renegadeShopRank = 100      // Same threshold for the 2-for-1 Property Room perk.
 	maxInventoryEach   = 20
 	maxClubShares      = 5
 	// Hand cuffs allow a controlled arrest after an enemy is weakened.
@@ -56,6 +62,34 @@ func (p *Player) psychicLeft() int {
 func (p *Player) refillPsychicEnergy() {
 	value := maxPsychicEnergy
 	p.PsychicEnergy = &value
+}
+
+// Restore a limited amount of PSI without exceeding the daily meter cap.
+// The returned amount is stored in the encounter receipt for the player.
+func (p *Player) restorePsychicEnergy(amount int) int {
+	if p.Class != "psychic" || amount <= 0 {
+		return 0
+	}
+	before := p.psychicLeft()
+	after := min(maxPsychicEnergy, before+amount)
+	p.PsychicEnergy = &after
+	return after-before
+}
+
+// Earlier releases stored PSI on a 0–100 scale. Preserve the remaining
+// *fraction* of a saved meter when moving to the 0–300 scale, including
+// exactly zero (a depleted meter must stay depleted after reloading).
+func (p *Player) migratePsychicEnergy(savedVersion string) {
+	if p.Class != "psychic" || p.PsychicEnergy == nil {
+		return
+	}
+	var major, minor, patch int
+	n, err := fmt.Sscanf(savedVersion, "%d.%d.%d", &major, &minor, &patch)
+	if err != nil || n != 3 || major != 0 || minor >= 8 {
+		return
+	}
+	energy := max(0, min(legacyPsychicEnergyMax, *p.PsychicEnergy))*maxPsychicEnergy/legacyPsychicEnergyMax
+	p.PsychicEnergy = &energy
 }
 func (p *Player) spendPsychicEnergy() bool {
 	if p.Class != "psychic" || p.psychicLeft() < psychicBlastCost {
