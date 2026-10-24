@@ -152,12 +152,12 @@ func (g *Game) act(action, name, class string) error {
 		case "use_cocaine", "use_fentanyl", "use_lsd":
 			return g.useEffect(action)
 		case "buy_condoms":
-			if p.Money < 10 {
+			if p.Money < condomPackPrice {
 				return errors.New("not enough cash")
 			}
-			p.Money -= 10
-			p.Condoms += 5
-			g.log("Bought a pack of five condoms for $10.")
+			p.Money -= condomPackPrice
+			p.Condoms += condomsPerPack
+			g.log(fmt.Sprintf("%s buys %d condoms from the Red Room for $%d.", p.Name, condomsPerPack, condomPackPrice))
 			return nil
 		case "buy_club":
 			if p.ClubShares >= maxClubShares {
@@ -181,7 +181,7 @@ func (g *Game) act(action, name, class string) error {
 				g.log(fmt.Sprintf("%s leaves the Red Room in one piece. The doctor can take the night off.", p.Name))
 			} else if rand.IntN(100) < 50 {
 				p.Infections++
-				g.log(fmt.Sprintf("%s leaves the Red Room with an unwelcome souvenir. The clinic is still open.", p.Name))
+				g.log(fmt.Sprintf("%s leaves the Red Room with an unwelcome souvenir. The patrol sergeant notices the limp.", p.Name))
 			} else {
 				g.log(fmt.Sprintf("%s leaves the Red Room feeling better, and with no new complaints.", p.Name))
 			}
@@ -190,12 +190,14 @@ func (g *Game) act(action, name, class string) error {
 			if p.Infections == 0 {
 				return errors.New("the doctor says you're fine")
 			}
-			if p.Money < 100 {
-				return errors.New("treatment costs $100")
+			cost := p.treatmentCost()
+			if p.Money < cost {
+				return fmt.Errorf("treatment costs $%d for %d infection(s)", cost, p.Infections)
 			}
-			p.Money -= 100
+			cured := p.Infections
+			p.Money -= cost
 			p.Infections = 0
-			g.log("Doctor's office: infections cured for $100.")
+			g.log(fmt.Sprintf("The doctor clears %s for duty: %d infection(s) treated for $%d.", p.Name, cured, cost))
 			return nil
 		case "clockout":
 			if p.Days <= 1 {
@@ -213,13 +215,7 @@ func (g *Game) act(action, name, class string) error {
 			if p.clearEffects() {
 				g.log("End of shift: all temporary effects have worn off.")
 			}
-			p.Bumfights = fightsPerDay
-			if p.Infections > 0 {
-				p.Bumfights = fightsPerDay - 15 - p.Infections
-				if p.Bumfights < 0 {
-					p.Bumfights = 0
-				}
-			}
+			p.Bumfights = p.shiftPatrols()
 			income := p.shiftIncome()
 			p.Money += income
 			g.log(fmt.Sprintf("New shift: +$%d net income. %d days remaining.", income, p.Days))
@@ -305,6 +301,8 @@ func (g *Game) act(action, name, class string) error {
 			case "psychopath":
 				label = "Chow Down"
 			}
+			// All three specials share the same infection penalty as normal attacks.
+			damage = p.infectionAdjustedDamage(damage)
 			if p.LSDEncounters > 0 {
 				var distorted bool
 				damage, distorted = distortedDamage(damage, rand.IntN(100))
