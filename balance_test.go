@@ -160,9 +160,9 @@ func TestLegacySavesRemainReadable(t *testing.T) {
 	}
 }
 
-func TestPsychicPowerCapped(t *testing.T) {
+func TestRobotPowerCapped(t *testing.T) {
 	g := newGame()
-	_ = g.act("start", "Psychic", "psychic")
+	_ = g.act("start", "Robot", "robot")
 	for i := 0; i < 10; i++ {
 		g.startEncounter()
 		_ = g.act("fight", "", "")
