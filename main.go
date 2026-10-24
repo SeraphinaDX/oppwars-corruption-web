@@ -84,6 +84,7 @@ func (s *server) getSession(w http.ResponseWriter, r *http.Request) (string, *en
 			var g Game
 			if json.Unmarshal(data, &g) == nil && validGame(&g) {
 				g.Player.normalizeLegacyClassResources()
+				g.Version = gameVersion // Old save files should display the current release.
 				e := &entry{game: &g, lastActive: now}
 				s.sessions[id] = e
 				return id, e, nil
