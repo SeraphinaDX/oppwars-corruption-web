@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.6.0
+# OPP Wars: Corruption — Web Edition v0.6.1
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,7 +27,7 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.6.0
+## What's in v0.6.1
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -36,6 +36,12 @@ Custom listen address and save location:
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.6.1 — enemy health bar layout fix
+
+- Enemy name, HP readout, and HP bar now appear together, **above** the enemy's catchphrase in combat.
+- Expose enemy HP as an accessible progress bar while retaining the existing colours and dialogue.
+- No changes to combat calculations or save-file format.
 
 ## v0.6.0 — Red Room encounter results
 
