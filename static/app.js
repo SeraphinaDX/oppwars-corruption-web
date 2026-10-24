@@ -31,8 +31,8 @@ function setupPage() {
 function patrolPage(g) {
   if(g.phase==='combat'){
     const e=g.enemy, p=g.player;
-    return heading('◈ ACTIVE PATROL / DISTRICT 03','Street encounter','Dispatch has assigned another unfortunate situation to your shift.') + skyline() + effectPanel(p) +
-      `<div class="card"><div class="enemy-header"><b>${escapeHTML(e.name.toUpperCase())}</b><span>● HOSTILE</span></div><p class="muted">Enemy health ${fmt(Math.max(0,e.hp))} / ${fmt(e.maxHP)}</p><div class="bar"><div class="fill" style="background:#f77699;width:${Math.max(0,Math.min(100,e.hp/e.maxHP*100))}%"></div></div></div>`+
+    return heading('◈ ACTIVE PATROL / DISTRICT 03',`${p.name} vs. ${e.name}`,'Dispatch has assigned another unfortunate situation to your shift.') + skyline() + effectPanel(p) +
+      `<div class="card"><div class="enemy-header"><b>${escapeHTML(e.name.toUpperCase())}</b><span>● HOSTILE</span></div><p class="muted">Enemy health ${fmt(Math.max(0,e.hp))} / ${fmt(e.maxHP)}</p>${e.catchphrase?`<blockquote class="enemy-quote">“${escapeHTML(e.catchphrase)}”</blockquote>`:''}<div class="bar"><div class="fill" style="background:#f77699;width:${Math.max(0,Math.min(100,e.hp/e.maxHP*100))}%"></div></div></div>`+
       `<div class="buttons">${actionButton('fight','⚔ FIGHT','primary')}${actionButton('special',p.class==='psychic'?`✧ PSYCHIC BLAST (${Math.floor((p.psychicEnergy??100)/25)} LEFT)`:p.class==='robot'?`⚡ CHARGED SHOT (${p.classPower}×)`:'◆ CHOW DOWN','cyan',p.class==='psychic'&&(p.psychicEnergy??100)<25)}${actionButton('retreat','↳ RETURN TO HQ','full')}</div>`+reports(g);
   }
   if(g.phase==='event'){
@@ -68,9 +68,9 @@ function propertyPage(g) {
 }
 function nightlifePage(g) {
   const p=g.player;
-  return heading('♧ DOWNTOWN / RED ROOM','The Red Room','Bureaucracy ends where questionable entertainment begins.')+
-    card('DOWNTOWN ACTIVITIES',`<p>Take an adults-only nightlife break for $100 to restore up to 200 HP (capped by level). A condom protects you from the game's infection roll; the doctor can treat infections.</p><div class="buttons">${actionButton('nightlife','♥ NIGHTLIFE BREAK • $100','primary')}${actionButton('buy_condoms','+ 5 CONDOMS • $10')}</div>`)+
-    card('CLUB INVESTMENT',`<p>Own a share of the venue: $2,000 per share, providing $500 income each new shift (maximum 5 shares). This version uses venue investment rather than buying people.</p>${row('Current shares',p.clubShares)}${row('Income each shift',`$${fmt(Math.min(p.clubShares,5)*500)}`)}<div class="buttons">${actionButton('buy_club','◆ INVEST $2,000','cyan full',p.clubShares>=5)}</div>`)+reports(g);
+  return heading('♧ DOWNTOWN / RED ROOM','The Red Room','The neon glows, the music pounds, and nobody wants to see your badge.')+
+    card('AFTER HOURS',`<p>The Red Room has adult company for hire. A private encounter costs $100. The house sells condoms, and the clinic opens early for anyone who needs it.</p><div class="buttons">${actionButton('nightlife','♥ BANG A PROSTITUTE • $100','primary',p.money<100)}${actionButton('buy_condoms','+ 5 CONDOMS • $10','',p.money<10)}</div>`)+
+    card('CLUB INVESTMENT',`<p>The manager is offering a slice of the business for $2,000. Shareholders get a cut of the takings every shift, assuming the manager doesn't run off with the till.</p>${row('Your club shares',p.clubShares)}${row('Your shift dividend',`$${fmt(Math.min(p.clubShares,5)*500)}`)}<div class="buttons">${actionButton('buy_club','◆ BUY A SHARE • $2,000','cyan full',p.clubShares>=5||p.money<2000)}</div>`)+reports(g);
 }
 function doctorPage(g) {
   const p=g.player;

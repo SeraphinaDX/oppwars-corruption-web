@@ -26,3 +26,6 @@
 @keyframes reality-shift{from{filter:hue-rotate(-12deg)}to{filter:hue-rotate(35deg)}}
 @media(max-width:620px){.shop-item{flex-direction:column;align-items:stretch}.shop-actions{justify-content:stretch}.shop-actions .btn{flex:1}}
 @media(prefers-reduced-motion:reduce){.lsd-active .scene{animation:none}}
+
+/* Enemy dialogue stays legible on narrow and wide combat panels. */
+.enemy-quote{margin:10px 0 4px;padding:10px 13px;border-left:3px solid var(--pink);background:#1b253a;color:#f7b0d6;font-size:13px;font-style:italic;line-height:1.5;overflow-wrap:anywhere}

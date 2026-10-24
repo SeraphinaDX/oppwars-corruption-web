@@ -48,6 +48,7 @@ type Encounter struct {
 	Name  string `json:"name"`
 	HP    int    `json:"hp"`
 	MaxHP int    `json:"maxHP"`
+	Catchphrase string `json:"catchphrase,omitempty"`
 }
 
 type Decision struct {
@@ -177,12 +178,12 @@ func (g *Game) act(action, name, class string) error {
 			p.restoreHP(200)
 			if p.Condoms > 0 {
 				p.Condoms--
-				g.log("Nightlife break completed safely. +200 HP.")
+				g.log(fmt.Sprintf("%s leaves the Red Room in one piece. The doctor can take the night off.", p.Name))
 			} else if rand.IntN(100) < 50 {
 				p.Infections++
-				g.log("Nightlife break: +200 HP, but you picked up an infection. See the doctor.")
+				g.log(fmt.Sprintf("%s leaves the Red Room with an unwelcome souvenir. The clinic is still open.", p.Name))
 			} else {
-				g.log("Nightlife break: +200 HP. You got lucky this time.")
+				g.log(fmt.Sprintf("%s leaves the Red Room feeling better, and with no new complaints.", p.Name))
 			}
 			return nil
 		case "clinic":
@@ -264,7 +265,7 @@ func (g *Game) act(action, name, class string) error {
 			}
 			g.Enemy = nil
 			g.Phase = "hq"
-			g.log("You retreated to headquarters. One patrol encounter used.")
+			g.log(fmt.Sprintf("%s retreats to headquarters. One patrol encounter used.", p.Name))
 			return nil
 		case "fight":
 			if rand.IntN(100) > 40 {
@@ -273,17 +274,17 @@ func (g *Game) act(action, name, class string) error {
 					var distorted bool
 					damage, distorted = distortedDamage(damage, rand.IntN(100))
 					if distorted {
-						g.log("Reality bends: you strike a mirage. Your hit deals half damage.")
+						g.log(fmt.Sprintf("%s swings at a mirage. The hit loses half its force.", p.Name))
 					}
 				}
 				g.Enemy.HP -= damage
-				g.log(fmt.Sprintf("You strike for %d HP. The paperwork practically fills itself out.", damage))
+				g.log(fmt.Sprintf("%s hits %s for %d HP. The paperwork practically fills itself out.", p.Name, g.Enemy.Name, damage))
 			} else if p.LSDEncounters > 0 && foresightDodge(rand.IntN(100)) {
-				g.log("Your altered perception spots the counterattack early. You dodge it!")
+				g.log(fmt.Sprintf("%s sees the counterattack coming and dodges!", p.Name))
 			} else {
 				hit := p.counterDamage()
 				p.HP -= hit
-				g.log(fmt.Sprintf("You miss! The enemy hits you with %s for %d HP.", attacks[rand.IntN(len(attacks))], hit))
+				g.log(fmt.Sprintf("%s misses %s! %s strikes %s with %s for %d HP.", p.Name, g.Enemy.Name, g.Enemy.Name, p.Name, attacks[rand.IntN(len(attacks))], hit))
 			}
 		case "special":
 			// Charged Shot charges from 1x to 4x over combat turns;
@@ -308,14 +309,14 @@ func (g *Game) act(action, name, class string) error {
 				var distorted bool
 				damage, distorted = distortedDamage(damage, rand.IntN(100))
 				if distorted {
-					g.log("You target a hallucination. Special damage is halved.")
+					g.log(fmt.Sprintf("%s targets a hallucination. Special damage is halved.", p.Name))
 				}
 			}
 			if p.Class == "psychopath" {
 				p.restoreHP(damage / 2)
 			}
 			g.Enemy.HP -= damage
-			g.log(fmt.Sprintf("%s! %d damage dealt.", label, damage))
+			g.log(fmt.Sprintf("%s uses %s against %s for %d damage.", p.Name, label, g.Enemy.Name, damage))
 			if p.Class == "robot" {
 				p.ClassPower = 1 // A fired Charged Shot must build power again.
 			}
@@ -326,11 +327,12 @@ func (g *Game) act(action, name, class string) error {
 			p.HP = 0
 			g.Enemy = nil
 			g.Phase = "gameover"
-			g.EndReason = "You were defeated on patrol. Your pension has been reassigned."
+			g.EndReason = fmt.Sprintf("%s was defeated on patrol. Your pension has been reassigned.", p.Name)
 			g.log(g.EndReason)
 			return nil
 		}
 		if g.Enemy.HP <= 0 {
+			defeated := g.Enemy.Name
 			g.Enemy = nil
 			g.Phase = "hq"
 			p.Bumfights--
@@ -346,14 +348,18 @@ func (g *Game) act(action, name, class string) error {
 					p.Level = i + 2
 				}
 			}
-			g.log(fmt.Sprintf("Patrol won! +%d XP (%d bonus), +$%d.", gained, bonusXP, pay))
+			g.log(fmt.Sprintf("%s defeats %s! +%d XP (%d bonus), +$%d.", p.Name, defeated, gained, bonusXP, pay))
 			for _, msg := range p.finishEncounter() {
 				g.log(msg + ".")
 			}
 			if p.Level > oldLevel {
-				g.log(fmt.Sprintf("PROMOTION: level %d!", p.Level))
+				g.log(fmt.Sprintf("PROMOTION: %s reaches level %d!", p.Name, p.Level))
 			}
 			return nil
+		}
+		if rand.IntN(3) == 0 {
+			g.Enemy.Catchphrase = nextCatchphrase(g.Enemy.Name, g.Enemy.Catchphrase)
+			g.log(fmt.Sprintf("%s shouts: %q", g.Enemy.Name, g.Enemy.Catchphrase))
 		}
 		if p.Class == "robot" && action == "fight" {
 			// Charge grows only after normal combat turns. Fired specials reset to 1.
@@ -403,20 +409,22 @@ func (g *Game) startEncounter() {
 	p := &g.Player
 	maxHP := 100 * p.Level
 	g.Enemy = &Encounter{Name: enemies[rand.IntN(len(enemies))], HP: maxHP, MaxHP: maxHP}
+	g.Enemy.Catchphrase = nextCatchphrase(g.Enemy.Name, "")
 	if p.Class == "robot" {
 		p.ClassPower = min(maxClassPower, p.ClassPower+1)
 	}
 	g.Phase = "combat"
-	g.log("Patrol encounter! You have a new incident to handle.")
+	g.log(fmt.Sprintf("%s runs into %s on patrol.", p.Name, g.Enemy.Name))
+	g.log(fmt.Sprintf("%s yells: %q", g.Enemy.Name, g.Enemy.Catchphrase))
 	if p.ParagonRank == 10 && rand.IntN(4) == 1 {
 		hit := min(50*p.Level, p.maxHP()/3)
 		p.HP -= hit
-		g.log(fmt.Sprintf("Captain Grimstead arranged a drive-by. You lost %d HP.", hit))
+		g.log(fmt.Sprintf("Captain Grimstead arranges a drive-by against %s, costing %d HP.", p.Name, hit))
 		if p.HP <= 0 {
 			p.HP = 0
 			g.Phase = "gameover"
 			g.Enemy = nil
-			g.EndReason = "You didn't survive the department's politics."
+			g.EndReason = fmt.Sprintf("%s didn't survive the department's politics.", p.Name)
 		}
 	}
 }

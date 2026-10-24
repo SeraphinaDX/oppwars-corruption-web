@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.3.0
+# OPP Wars: Corruption — Web Edition v0.4.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,7 +27,7 @@ Custom listen address and save location:
 
 **Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
 
-## What's in v0.3.0
+## What's in v0.4.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -36,6 +36,15 @@ Custom listen address and save location:
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.4.0 — in-character combat and Red Room
+
+- The Red Room's paid encounter is now labelled **Bang a prostitute**. The action keeps its existing $100 cost, recovery, condom consumption and infection-risk mechanics.
+- Red Room flavour text is written as in-world dialogue instead of explaining probability rolls or differences from the terminal edition. Club investments continue to work the same way.
+- Combat messages name the officer and their opponent, including hits, misses, dodges, specials, retreats, promotions and victory rewards.
+- Each opponent has individual random catchphrases, shown in the combat panel and dispatch log. Enemies occasionally change what they shout during longer fights.
+- Catchphrases are included in saves. Older saves without this optional field continue to load.
+- The displayed browser version comes from the server's `version.go` constant, now **v0.4.0**.
 
 ## v0.3.0 — class specials, pricing, and visible version numbers
 
@@ -64,7 +73,7 @@ This is **a reconstructed adaptation**, not yet shared game-logic code. The curr
 
 Differences in this first edition:
 
-- Adult material is presented as non-graphic nightlife. Instead of buying people, the Red Room has venue investments with the same $2,000 cost and $500/day revenue model.
+- Adult material is presented through non-graphic paid adult encounters. Instead of buying people, the Red Room has venue investments with the same $2,000 cost and $500/day revenue model.
 - The original game's exploitative reproductive/child-trading scenario is not included.
 - Combat returns to HQ after victory rather than immediately opening another encounter; use Hit the Streets to continue.
 - Original encounter descriptions and random event text are paraphrased, not copied.
