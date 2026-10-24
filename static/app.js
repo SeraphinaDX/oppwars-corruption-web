@@ -69,18 +69,21 @@ function propertyPage(g) {
 function nightlifePage(g) {
   const p=g.player;
   return heading('♧ DOWNTOWN / RED ROOM','The Red Room','The neon glows, the music pounds, and nobody wants to see your badge.')+
-    card('AFTER HOURS',`<p>The Red Room has adult company for hire. A private encounter costs $100. The house sells condoms, and the clinic opens early for anyone who needs it.</p><div class="buttons">${actionButton('nightlife','♥ BANG A PROSTITUTE • $100','primary',p.money<100)}${actionButton('buy_condoms','+ 5 CONDOMS • $10','',p.money<10)}</div>`)+
+    card('AFTER HOURS',`<p>The Red Room has adult company for hire. A private encounter costs $100. The house sells condoms at the bar, and the clinic opens early for anyone who needs it.</p><div class="buttons">${actionButton('nightlife','♥ BANG A PROSTITUTE • $100','primary',p.money<100)}${actionButton('buy_condoms','+ 5 CONDOMS • $250','',p.money<250)}</div>`)+
     card('CLUB INVESTMENT',`<p>The manager is offering a slice of the business for $2,000. Shareholders get a cut of the takings every shift, assuming the manager doesn't run off with the till.</p>${row('Your club shares',p.clubShares)}${row('Your shift dividend',`$${fmt(Math.min(p.clubShares,5)*500)}`)}<div class="buttons">${actionButton('buy_club','◆ BUY A SHARE • $2,000','cyan full',p.clubShares>=5||p.money<2000)}</div>`)+reports(g);
 }
 function doctorPage(g) {
   const p=g.player;
-  return heading('✚ MEDICAL SERVICES / CLINIC','Doctors office','The doctor refuses to ask how you got here.')+
-    card('MEDICAL RECORD',row('Current HP',fmt(p.hp))+row('Active infections',p.infections)+row('Cure cost','$100')+`<div class="buttons">${actionButton('clinic','✚ TREAT INFECTIONS • $100','cyan full',p.infections===0)}</div><p class="hint">Infections reduce daily patrol capacity and cause a $25 per-infection income penalty when you clock out.</p>`)+reports(g);
+  const cost = Math.max(0,p.infections)*500;
+  const damagePenalty = Math.min(45,Math.max(0,p.infections)*15);
+  const nextPatrols = p.infections>0 ? Math.max(5,25-15-p.infections*3) : 25;
+  return heading('✚ MEDICAL SERVICES / CLINIC','Doctors office','The doctor has seen worse. The bill may hurt more than the diagnosis.')+
+    card('MEDICAL RECORD',row('Current HP',fmt(p.hp))+row('Active infections',p.infections)+row('Damage penalty',p.infections?`-${damagePenalty}%`:'None')+row('Pay deducted per shift',`$${fmt(p.infections*150)}`)+row('Patrol slots next shift',nextPatrols)+row('Treatment bill',`$${fmt(cost)}`)+`<div class="buttons">${actionButton('clinic',`✚ TREAT INFECTIONS • $${fmt(cost)}`,'cyan full',p.infections===0||p.money<cost)}</div><p class="hint">The clinic clears every infection on your record. While sick, your attacks hit softer, your patrol assignments dwindle and the department docks your pay.</p>`)+reports(g);
 }
 function recordPage(g) {
  const p=g.player;
  return heading('▤ PERSONNEL / CLASSIFIED DOSSIER','Officer file','Everything on record. Nothing off the record.')+
-   card('PERSONNEL',row('Name',p.name)+row('Classification',p.class)+row('Level',p.level)+row('Attack',p.attack)+row(p.class==='robot'?'Charged Shot multiplier':p.class==='psychic'?'Psychic energy':'Special ability',p.class==='robot'?`${p.classPower}×`:p.class==='psychic'?`${p.psychicEnergy??100} / 100`:'Chow Down')+row('Experience',fmt(p.experience))+row('Paragon',p.paragonRank)+row('Renegade',p.renegadeRank)+row('Remaining days',p.days))+
+   card('PERSONNEL',row('Name',p.name)+row('Classification',p.class)+row('Level',p.level)+row('Attack',p.attack)+row(p.class==='robot'?'Charged Shot multiplier':p.class==='psychic'?'Psychic energy':'Special ability',p.class==='robot'?`${p.classPower}×`:p.class==='psychic'?`${p.psychicEnergy??100} / 100`:'Chow Down')+row('Experience',fmt(p.experience))+row('Paragon',p.paragonRank)+row('Renegade',p.renegadeRank)+row('Remaining days',p.days)+row('Combat illness penalty',p.infections?`-${Math.min(45,p.infections*15)}% damage`:'None'))+
    card('INVENTORY',row('Cocaine',p.cocaine)+row('Fentanyl',p.fentanyl)+row('LSD',p.lsd)+row('Condoms',p.condoms)+row('Club shares',p.clubShares)+row('Active status',activeEffect(p)?.[0]||'None')+row('Status encounters left',activeEffect(p)?.[1]||0))+
    card('PERSONNEL ACTIONS',`<p>Starting a new campaign replaces this browser session's current save.</p><div class="buttons">${actionButton('reset','↻ NEW GAME','alert full')}</div>`)+reports(g);
 }
