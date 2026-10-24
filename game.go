@@ -355,7 +355,8 @@ func (g *Game) act(action, name, class string) error {
 			}
 			return nil
 		}
-		if p.Class == "robot" {
+		if p.Class == "robot" && action == "fight" {
+			// Charge grows only after normal combat turns. Fired specials reset to 1.
 			p.ClassPower = min(maxClassPower, p.ClassPower+1)
 		}
 		return nil
