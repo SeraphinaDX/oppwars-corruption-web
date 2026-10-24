@@ -14,7 +14,7 @@ func TestEnemyHealthBarAboveCatchphrase(t *testing.T) {
 	}
 	js := string(page)
 	start := strings.Index(js, "function patrolPage(g)")
-	end := strings.Index(js, "if(g.phase==='event')", start)
+	end := start + strings.Index(js[start:], "if(g.phase==='event')")
 	if start < 0 || end <= start {
 		t.Fatal("cannot locate combat UI rendering code")
 	}
