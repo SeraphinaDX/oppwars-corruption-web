@@ -135,7 +135,11 @@ async function request(action,name='',officerClass=''){
   const response=await fetch('/api/action',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,name,class:officerClass})});
   const data=await response.json();
   if(!response.ok)throw Error(data.error||'server error');
-  state.game=data;state.panel='patrol';render();
+  state.game=data;
+   // Buying gear should keep the player in the Property Room so updated
+   // inventory is visible; only navigation actions leave the current panel.
+   if(!(data.phase==='hq'&&(action.startsWith('buy_')||action.startsWith('use_'))))state.panel='patrol';
+   render();
  }catch(err){toast(err.message || 'Connection lost')}
  finally{state.busy=false}
 }
