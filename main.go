@@ -83,6 +83,7 @@ func (s *server) getSession(w http.ResponseWriter, r *http.Request) (string, *en
 		if readErr == nil {
 			var g Game
 			if json.Unmarshal(data, &g) == nil && validGame(&g) {
+				g.Player.normalizeLegacyClassResources()
 				e := &entry{game: &g, lastActive: now}
 				s.sessions[id] = e
 				return id, e, nil
