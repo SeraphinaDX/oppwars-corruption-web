@@ -33,7 +33,7 @@ function patrolPage(g) {
     const e=g.enemy, p=g.player;
     return heading('◈ ACTIVE PATROL / DISTRICT 03',`${p.name} vs. ${e.name}`,'Dispatch has assigned another unfortunate situation to your shift.') + skyline() + effectPanel(p) +
       `<div class="card"><div class="enemy-header"><b>${escapeHTML(e.name.toUpperCase())}</b><span>● HOSTILE</span></div><p class="muted">Enemy health ${fmt(Math.max(0,e.hp))} / ${fmt(e.maxHP)}</p><div class="bar" role="progressbar" aria-label="Enemy health" aria-valuemin="0" aria-valuemax="${e.maxHP}" aria-valuenow="${Math.max(0,e.hp)}"><div class="fill" style="background:#f77699;width:${Math.max(0,Math.min(100,e.hp/e.maxHP*100))}%"></div></div>${e.catchphrase?`<blockquote class="enemy-quote">“${escapeHTML(e.catchphrase)}”</blockquote>`:''}</div>`+
-      `<div class="buttons">${actionButton('fight','⚔ FIGHT','primary')}${actionButton('special',p.class==='psychic'?`✧ PSYCHIC BLAST (${Math.floor((p.psychicEnergy??100)/25)} LEFT)`:p.class==='robot'?`⚡ CHARGED SHOT (${p.classPower}×)`:'◆ CHOW DOWN','cyan',p.class==='psychic'&&(p.psychicEnergy??100)<25)}${actionButton('retreat','↳ RETURN TO HQ','full')}</div>`+reports(g);
+      `<p class="hint">Arrest a suspect below 50% HP with one pair of hand cuffs. Arrests earn Paragon but pay less than eliminations.</p><div class="buttons">${actionButton('fight','⚔ FIGHT','primary')}${actionButton('special',p.class==='psychic'?`✧ PSYCHIC BLAST (${Math.floor((p.psychicEnergy??100)/25)} LEFT)`:p.class==='robot'?`⚡ CHARGED SHOT (${p.classPower}×)`:'◆ CHOW DOWN','cyan',p.class==='psychic'&&(p.psychicEnergy??100)<25)}${actionButton('arrest',`♙ ARREST (${fmt(p.handcuffs || 0)} CUFFS)`,'cyan',!p.handcuffs || e.hp<=0 || e.hp>e.maxHP*0.5)}${actionButton('retreat','↳ RETURN TO HQ')}</div>`+reports(g);
   }
   if(g.phase==='event'){
     return heading('◈ UNEXPECTED DISPATCH / DECISION',g.event.title,'What kind of officer are you going to be?')+skyline()+card('YOUR DECISION',`<p>${escapeHTML(g.event.description)}</p><div class="buttons">${g.event.choices.map(ch=>actionButton('choose_'+ch.id,ch.label,ch.id==='renegade'?'primary':'cyan')).join('')}</div>`)+reports(g);
@@ -64,7 +64,8 @@ function propertyPage(g) {
       const count=p[id]||0;
       const units=1;
       return `<div class="shop-item"><div class="shop-description"><strong>${escapeHTML(label)}</strong><span class="hint">${escapeHTML(price)} · ${escapeHTML(desc)}<br>IN LOCKER: ${fmt(count)} / 20</span></div><div class="shop-actions">${actionButton('buy_'+id,'BUY','small',p.money<shopPrices[id]||count+units*(p.renegadeRank>=10?2:1)>20)}${actionButton('use_'+id,'ACTIVATE','cyan small',count<1||!!active)}</div></div>`;
-    }).join('')+`<p class="hint">Renegade rank 10+ doubles shop quantities, subject to the 20-unit inventory limit. These are fictional game mechanics, not real drug effects.</p>`)+reports(g);
+    }).join('')+`<p class="hint">Renegade rank 10+ doubles shop quantities, subject to the 20-unit inventory limit. These are fictional game mechanics, not real drug effects.</p>`)+
+    card('ARREST EQUIPMENT',`<div class="shop-item"><div class="shop-description"><strong>Hand cuffs</strong><span class="hint">$100 per pair. Each successful arrest uses one pair and awards +1 Paragon. Suspects must be below 50% HP.<br>IN LOCKER: ${fmt(p.handcuffs || 0)} / 20</span></div><div class="shop-actions">${actionButton('buy_handcuffs','BUY • $100','small',p.money<100||(p.handcuffs||0)+(p.renegadeRank>=10?2:1)>20)}</div></div>`)+reports(g);
 }
 function redRoomResultPage(g) {
  const r=g.redRoom;
@@ -99,7 +100,7 @@ function recordPage(g) {
  const p=g.player;
  return heading('▤ PERSONNEL / CLASSIFIED DOSSIER','Officer file','Everything on record. Nothing off the record.')+
    card('PERSONNEL',row('Name',p.name)+row('Classification',p.class)+row('Level',p.level)+row('Attack',p.attack)+row(p.class==='robot'?'Charged Shot multiplier':p.class==='psychic'?'Psychic energy':'Special ability',p.class==='robot'?`${p.classPower}×`:p.class==='psychic'?`${p.psychicEnergy??100} / 100`:'Chow Down')+row('Experience',fmt(p.experience))+row('Paragon',p.paragonRank)+row('Renegade',p.renegadeRank)+row('Remaining days',p.days)+row('Combat illness penalty',p.infections?`-${Math.min(45,p.infections*15)}% damage`:'None'))+
-   card('INVENTORY',row('Cocaine',p.cocaine)+row('Fentanyl',p.fentanyl)+row('LSD',p.lsd)+row('Condoms',p.condoms)+row('Club shares',p.clubShares)+row('Active status',activeEffect(p)?.[0]||'None')+row('Status encounters left',activeEffect(p)?.[1]||0))+
+   card('INVENTORY',row('Cocaine',p.cocaine)+row('Fentanyl',p.fentanyl)+row('LSD',p.lsd)+row('Condoms',p.condoms)+row('Hand cuffs',p.handcuffs||0)+row('Club shares',p.clubShares)+row('Active status',activeEffect(p)?.[0]||'None')+row('Status encounters left',activeEffect(p)?.[1]||0))+
    card('PERSONNEL ACTIONS',`<p>Starting a new campaign replaces this browser session's current save.</p><div class="buttons">${actionButton('reset','↻ NEW GAME','alert full')}</div>`)+reports(g);
 }
 const pHasLSD = g => g.phase!=='setup' && g.player.lsdEncounters>0;
@@ -124,7 +125,7 @@ function render() {
  const xpMax=([0,...[1000,4000,9000,18000,30000,60000,120000,240000,480000,960000,1920000,3840000,7680000,15360000]][p.level] || 15360000);
  el('vitals').innerHTML=progress('HEALTH',p.hp,Math.min(720,200+Math.max(0,p.level-1)*40),'#6addab')+progress('EXPERIENCE',p.experience,xpMax,'#ffc778')+(p.class==='psychic'?progress('PSYCHIC ENERGY',p.psychicEnergy??100,100,'#8a80ff'):p.class==='robot'?progress('CHARGED SHOT',p.classPower,4,'#57e8ef'):'')+
   `<div class="vital"><div class="vital-line"><span>KARMA</span><strong style="color:var(--pink)">${p.renegadeRank>=p.paragonRank?'RENEGADE':'PARAGON'}</strong></div><div class="bar"><div class="fill" style="width:${Math.min(100,Math.abs(p.renegadeRank-p.paragonRank)*10)}%;background:var(--pink)"></div></div></div>`;
- el('brief').innerHTML=row('CASH',`$${fmt(p.money)}`)+row('PATROLS',`${p.fightsLeft} / ${25}`)+row('DAYS',p.days)+row('INFECTIONS',p.infections)+row('ACTIVE EFFECT',activeEffect(p)?.[0]||'None');
+ el('brief').innerHTML=row('CASH',`$${fmt(p.money)}`)+row('PATROLS',`${p.fightsLeft} / ${25}`)+row('DAYS',p.days)+row('INFECTIONS',p.infections)+row('HAND CUFFS',p.handcuffs||0)+row('ACTIVE EFFECT',activeEffect(p)?.[0]||'None');
 }
 function toast(msg){const box=el('toast');box.textContent=msg;box.classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>box.classList.remove('visible'),4100)}
 async function request(action,name='',officerClass=''){
