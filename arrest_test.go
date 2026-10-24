@@ -77,7 +77,7 @@ func TestArrestRequiresCuffsAndWeakenedEnemy(t *testing.T) {
 		t.Fatalf("wrong karma after arrest %+v",g.Player)
 	}
 	if g.Player.Money!=beforeCash+g.Player.victoryPay()/2 ||
-		g.Player.Experience!=100 || g.Player.Bumfights!=fightsPerDay-1 ||
+		g.Player.Experience!=125 || g.Player.Bumfights!=fightsPerDay-1 ||
 		g.Player.CocaineEncounters!=1 {
 		t.Fatalf("incorrect arrest rewards or effects: %+v",g.Player)
 	}
