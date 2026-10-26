@@ -2,6 +2,8 @@
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
+![Screenshot](screenshot.avif)
+
 ## Run
 
 Requires Go **1.23 or newer**. In this standalone fork, run from the repository root:
