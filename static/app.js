@@ -1,6 +1,6 @@
 'use strict';
 // OPP Wars Web: The Go backend owns all game state. JavaScript only renders it.
-const state = { game: null, panel: 'patrol', picked: 'psychic', busy: false, auth: null, precinct: null, viewingOfficer: null };
+const state = { game: null, panel: 'patrol', picked: 'psychic', busy: false, auth: null, precinct: null, viewingOfficer: null, calendarBusy: false, lastCalendarCheck: 0 };
 const el = id => document.getElementById(id);
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n || 0).toLocaleString();
@@ -21,10 +21,33 @@ const effectPanel = p => {
  const active=activeEffect(p);
  return active?`<div class="effect-notice"><strong>◈ ${escapeHTML(active[0])}</strong><span>${active[1]} encounter${active[1]===1?'':'s'} left</span><p>${escapeHTML(active[2])}. Ends when the shift ends.</p></div>`:'';
 };
+const utcResetTime = g => g?.lastResetDate ? Date.parse(g.lastResetDate+'T00:00:00Z')+86400000 : 0;
+function resetCountdown() {
+ const target=utcResetTime(state.game), targetEl=el('daily-reset');
+ if(!targetEl)return;
+ if(!target){targetEl.textContent='UTC CALENDAR NOT STARTED';return}
+ const seconds=Math.max(0,Math.ceil((target-Date.now())/1000));
+ const hrs=Math.floor(seconds/3600), mins=Math.floor(seconds%3600/60), secs=seconds%60;
+ targetEl.textContent=`NEXT UTC RESET • ${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+}
+async function checkCalendar() {
+ const g=state.game;
+ if(!g||g.phase==='setup'||g.phase==='gameover'||state.calendarBusy||!utcResetTime(g)||Date.now()<utcResetTime(g)) return;
+ if(Date.now()-state.lastCalendarCheck<15000)return;
+ state.calendarBusy=true;state.lastCalendarCheck=Date.now();
+ try{
+  const res=await fetch('/api/state',{cache:'no-store'});
+  if(!res.ok)throw Error('Daily reset unavailable');
+  state.game=await res.json();
+  state.panel='patrol';state.viewingOfficer=null;
+  render();
+ }catch(err){toast(err.message)}
+ finally{state.calendarBusy=false}
+}
 const reports = g => `<section class="report"><h3>◉ DISPATCH LOG / LATEST ACTIVITY</h3>${g.messages.slice(0,6).map(m=>`<div class="report-entry">${escapeHTML(m)}</div>`).join('')}</section>`;
 
 function setupPage() {
-  return heading('◈ ACCESS TERMINAL / RECRUITMENT', 'Report for duty, Constable.', 'The city is in trouble. Your supervisor thinks you might make it worse.') +
+  return heading('◈ ACCESS TERMINAL / RECRUITMENT', 'Report for duty, Constable.', 'The city is in trouble. Your 30 real-life duty days begin today and reset at midnight UTC.') +
    `<div class="card"><h2>CREATE OFFICER PROFILE</h2><label class="field">OFFICER NAME<input id="new-name" maxlength="24" placeholder="Enter your damned name" autocomplete="off" spellcheck="false"></label><div class="subhead">// CLASSIFICATION</div><div class="classes">`+
    [['robot','🤖','ROBOT','Charged Shot • builds from 1× to 4×'],['psychic','🔮','PSYCHIC','Psychic Blast • 2× damage, 12 uses per shift'],['psychopath','🔪','PSYCHOPATH','Chow Down • heal from damage dealt']].map(([key,icon,title,desc])=>`<button class="classcard ${state.picked===key?'selected':''}" data-class="${key}" aria-pressed="${state.picked===key}"><span class="glyph">${icon}</span><strong>${title}</strong><small>${desc}</small></button>`).join('')+`</div><div class="buttons">${actionButton('start','✦ BEGIN 30-DAY CAMPAIGN','primary full')}</div><div class="hint">Save data is associated with this browser session on the local Go server. No sign-up required.</div></div>`;
 }
@@ -41,13 +64,19 @@ function patrolPage(g) {
   if(g.phase==='gameover'){
     return heading('◈ CAMPAIGN COMPLETE','Game over, Constable.',g.endReason)+card('FINAL RECORD',row('Officer',g.player.name)+row('Class',g.player.class)+row('Level',g.player.level)+row('Experience',fmt(g.player.experience))+row('Cash',`$${fmt(g.player.money)}`)+row('Paragon / Renegade',`${g.player.paragonRank} / ${g.player.renegadeRank}`)+`<div class="buttons">${actionButton('reset','↻ START NEW GAME','primary full')}</div>`)+reports(g);
   }
-  return heading('◈ HQ / ACTIVE DUTY','Welcome to the night shift.','The city is falling apart. At least your paycheck is still arriving.')+skyline()+effectPanel(g.player)+
-    card('NEXT ASSIGNMENT',`<p>District 03 is still dangerous. You have <strong style="color:var(--cyan)">${g.player.fightsLeft}</strong> patrol encounters remaining this shift.</p><div class="buttons">${actionButton('patrol','⚔ HIT THE STREETS','primary full',g.player.fightsLeft<=0)}${actionButton('clockout','☾ CLOCK OUT / NEXT DAY','full')}</div>`)+reports(g);
+  return heading('◈ HQ / ACTIVE DUTY','Welcome to the night shift.','Your patrol turns reset at midnight UTC. Today is one of your 30 real-world campaign days.')+skyline()+effectPanel(g.player)+
+    card('NEXT ASSIGNMENT',`<p>District 03 is still dangerous. You have <strong style="color:var(--cyan)">${g.player.fightsLeft}</strong> patrol encounters remaining today.</p><p class="hint">Your turns refresh at midnight UTC. Clocking out ends today's shift, not the calendar day.</p><div class="buttons">${actionButton('patrol','⚔ HIT THE STREETS','primary full',g.player.fightsLeft<=0)}${actionButton('clockout','☾ CLOCK OUT FOR TODAY','full')}</div>`)+reports(g);
+}
+function shiftDonePage(g) {
+ return heading('◈ HQ / SHIFT COMPLETE','Off duty until midnight UTC',`${g.player.name} has finished today's shift. No more patrols or purchases until the next UTC day.`)+
+  card('TODAY IS CLOSED',row('Campaign day',`${31-g.player.days} / 30`)+row('Days remaining',g.player.days)+row('Next daily reset','00:00 UTC')+
+   '<p class="hint">The precinct roster, public officer profiles, and your personnel file remain available while off duty.</p>')+
+  reports(g);
 }
 function hqPage(g) {
   const p=g.player;
   return heading('▣ OPERATIONS / HEADQUARTERS','Police headquarters','The coffee is stale. The paperwork is classified.')+
-    card('SHIFT BOARD',row('Officer',p.name)+row('Day remaining',`${p.days} of 30`)+row('Patrol encounters remaining',p.fightsLeft)+row('Club dividends per shift',`$${fmt(Math.min(p.clubShares,5)*500)}`)+row('Base shift pay','$500')+`<div class="buttons">${actionButton('clockout','☾ CLOCK OUT & COLLECT PAY','primary full')}</div>`)+
+    card('SHIFT BOARD',row('Officer',p.name)+row('Calendar day',`${31-p.days} of 30`)+row('Days remaining (including today)',p.days)+row('Patrol turns remaining',p.fightsLeft)+row('Campaign started (UTC)',g.campaignStart||'Unassigned')+row('Club dividends per shift',`$${fmt(Math.min(p.clubShares,5)*500)}`)+row('Base shift pay','$500')+`<div class="buttons">${actionButton('clockout','☾ CLOCK OUT & COLLECT PAY','primary full')}</div>`)+
     card('DISPATCHER NOTE','<p>Your promotions depend on experience. Reaching 100 Paragon rank may earn you powerful enemies inside the department.</p>')+reports(g);
 }
 function propertyPage(g) {
@@ -189,6 +218,7 @@ function render() {
  let page;
  if((g.phase==='hq'||g.phase==='setup')&&state.panel==='account') page=authPage();
  else if((g.phase==='hq'||g.phase==='setup')&&state.panel==='precinct') page=precinctPage(g);
+ else if(g.phase==='hq'&&g.shiftEnded&&!['account','precinct','record'].includes(state.panel)) page=shiftDonePage(g);
  else if(g.phase==='setup') page=setupPage();
  else if(g.phase==='redroom_result') page=redRoomResultPage(g);
  else if(g.phase!=='hq') page=patrolPage(g);
@@ -200,7 +230,8 @@ function render() {
  const p=g.player;
  el('officer-name').textContent=p.name || 'UNASSIGNED';
  el('officer-class').textContent=p.class ? `${p.class.toUpperCase()} // LEVEL ${p.level}` : 'CLASS NOT SELECTED';
- el('shift-status').textContent=g.phase==='setup'?'RECRUITMENT OPEN':g.phase==='gameover'?'CAMPAIGN FINISHED':g.phase==='combat'?'COMBAT ACTIVE':g.phase==='redroom_result'?'RED ROOM REPORT':`${p.days} DAYS REMAINING`;
+ el('shift-status').textContent=g.phase==='setup'?'RECRUITMENT OPEN':g.phase==='gameover'?'CAMPAIGN FINISHED':g.phase==='combat'?'COMBAT ACTIVE':g.phase==='redroom_result'?'RED ROOM REPORT':g.shiftEnded?'OFF DUTY UNTIL 00:00 UTC':`${p.days} CALENDAR DAYS LEFT`;
+ resetCountdown();
  if(g.phase==='setup') {el('vitals').innerHTML='';el('brief').innerHTML='<p class="hint">Choose a class to get started.</p>';return}
  const xpMax=([0,...[1000,4000,9000,18000,30000,60000,120000,240000,480000,960000,1920000,3840000,7680000,15360000]][p.level] || 15360000);
  el('vitals').innerHTML=progress('HEALTH',p.hp,Math.min(720,200+Math.max(0,p.level-1)*40),'#6addab')+progress('EXPERIENCE',p.experience,xpMax,'#ffc778')+(p.class==='psychic'?progress('PSYCHIC ENERGY',p.psychicEnergy??300,300,'#8a80ff'):p.class==='robot'?progress('CHARGED SHOT',p.classPower,4,'#57e8ef'):'')+
@@ -245,6 +276,7 @@ document.addEventListener('submit',e=>{
  accountSubmit(form.dataset.authForm,form.elements.username.value,form.elements.password.value);
 });
 setInterval(()=>{if(state.auth?.authenticated&&state.panel==='precinct'&&!state.viewingOfficer)loadPrecinct()},30000);
+setInterval(()=>{resetCountdown();checkCalendar()},1000);
 (async()=>{
  try{const [res,auth]=await Promise.all([
   fetch('/api/state',{cache:'no-store'}),fetch('/api/auth',{cache:'no-store'})
