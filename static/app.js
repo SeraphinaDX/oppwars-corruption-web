@@ -130,7 +130,7 @@ function recordPage(g) {
  return heading('▤ PERSONNEL / CLASSIFIED DOSSIER','Officer file','Everything on record. Nothing off the record.')+
    card('PERSONNEL',row('Name',p.name)+row('Classification',p.class)+row('Level',p.level)+row('Attack',p.attack)+row(p.class==='robot'?'Charged Shot multiplier':p.class==='psychic'?'Psychic energy':'Special ability',p.class==='robot'?`${p.classPower}×`:p.class==='psychic'?`${p.psychicEnergy??300} / 300`:'Chow Down')+row('Experience',fmt(p.experience))+row('Paragon',p.paragonRank)+row('Renegade',p.renegadeRank)+row('Remaining days',p.days)+row('Combat illness penalty',p.infections?`-${Math.min(45,p.infections*15)}% damage`:'None'))+
    card('INVENTORY',row('Cocaine',p.cocaine)+row('Fentanyl',p.fentanyl)+row('LSD',p.lsd)+row('Condoms',p.condoms)+row('Hand cuffs',p.handcuffs||0)+row('Club shares',p.clubShares)+row('Active status',activeEffect(p)?.[0]||'None')+row('Status encounters left',activeEffect(p)?.[1]||0))+
-   card('PERSONNEL ACTIONS',`<p>Starting a new campaign replaces this browser session's current save.</p><div class="buttons">${actionButton('reset','↻ NEW GAME','alert full')}</div>`)+reports(g);
+   card('PERSONNEL ACTIONS',`<p>Your officer is serving a 30-day real-world campaign. A new officer can be created after the 30th UTC day ends.</p><p class="hint">Until then, progress stays attached to your current character.</p>`)+reports(g);
 }
 function authPage() {
  const username=state.auth?.username;
