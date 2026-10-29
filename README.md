@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.8.0
+# OPP Wars: Corruption — Web Edition v0.9.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -27,9 +27,35 @@ Custom listen address and save location:
 ./oppwars-web -listen=127.0.0.1:8090 -save-dir=/path/to/saves
 ```
 
-**Security note:** Default binding is localhost. This is a local single-player game, **not** a ready-to-publish public multiuser service. Don't expose the server to the public internet without TLS, authentication, rate limiting and hardening. Browser sessions are identified by unguessable HttpOnly cookies, and save data is stored by the server. Clearing cookies loses access to an existing save; back up the saves folder if needed.
+**Multiplayer security:** This is a *first-stage multiplayer beta*, not yet a fully hardened public service. Account registration and login use salted Argon2id password hashes; sessions are random tokens stored as hashes in SQLite. Guest saves still work without accounts. Host the backend on loopback behind HTTPS Caddy, use `-secure-cookies`, back up the `-save-dir` including `precinct.sqlite` and account JSON saves, and monitor public access. Basic per-account login throttling is not a substitute for edge rate limits, account recovery, abuse controls, moderation, or an operations audit. Never expose port 8080 directly to the internet.
 
-## What's in v0.8.0
+### Caddy deployment
+
+Point a domain's DNS record to the server. Sample Caddyfile (replace the domain):
+
+```caddyfile
+oppwars.example.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+Run the game server **on the same host as Caddy**, keeping the Go port private:
+
+```sh
+go build -o oppwars-web .
+./oppwars-web -listen=127.0.0.1:8080 -secure-cookies
+```
+
+Caddy handles HTTPS and forwards the original Host header, which lets same-origin API protection continue to work. The `-secure-cookies` flag is important because TLS terminates at Caddy, so the Go HTTP request itself is not marked HTTPS. Do not configure permissive CORS or forward untrusted client-provided authentication headers. When Caddy runs on a different host, use a private link and firewall the backend instead of exposing it.
+
+### What you can do online in v0.9.0
+
+Create a new account from the **Account** menu, or register after starting as a guest to attach your existing character. Use the username/password from another browser to resume the same campaign. Registered officers appear in **Online Precinct**, with an activity-based online indicator (last five minutes), public class/level/XP/karma profiles, and an XP leaderboard. Chat, mugger contracts, PvP, co-op patrols, and real-world daily resets are planned *later*, not shipped in this version.
+
+Only one Go process should write to the `-save-dir` at a time. SQLite stores credentials, account sessions and public profile indexes; per-account JSON save files still store full game state. Sessions expire after 30 days, sign-out invalidates the current browser, and no email/password recovery is included yet. If an officer is currently signed out, their online indicator turns off after five minutes. Account usernames are unique and case-insensitive.
+
+## What's in v0.9.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -38,6 +64,15 @@ Custom listen address and save location:
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.9.0 — shared online precinct and player accounts
+
+- New SQLite-backed registration and login system; user passwords are hashed using Argon2id, account session tokens are kept hashed in the database, and account cookies are HttpOnly and SameSite=Strict.
+- Player characters are associated with their accounts, allowing existing guest officers to be adopted on registration and returning players to load their game from another browser.
+- A shared precinct shows the last-five-minutes roster and a top-25 experience leaderboard. Each registered officer has a public class, level, XP, Paragon and Renegade profile. Money, possessions, combat state, and game logs stay private.
+- Solo/guest play continues to work; existing saved browser sessions remain compatible.
+- `-secure-cookies` supports HTTPS termination at a Caddy reverse proxy; server still binds to loopback by default.
+- Public multiplayer gameplay and real-calendar 30-day campaigns remain future work.
 
 ## v0.8.0 — longer-term karma perks and Psychic recharge
 
