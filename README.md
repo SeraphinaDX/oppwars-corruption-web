@@ -1,4 +1,4 @@
-# OPP Wars: Corruption — Web Edition v0.9.0
+# OPP Wars: Corruption — Web Edition v0.10.0
 
 A playable, dependency-free Go browser adaptation of the [original OPP Wars](https://git.cerberusgames.ca/Starstreak/oppwars) terminal game. GPL-3.0-only, consistent with the original repository.
 
@@ -51,11 +51,11 @@ Caddy handles HTTPS and forwards the original Host header, which lets same-origi
 
 ### What you can do online in v0.9.0
 
-Create a new account from the **Account** menu, or register after starting as a guest to attach your existing character. Use the username/password from another browser to resume the same campaign. Registered officers appear in **Online Precinct**, with an activity-based online indicator (last five minutes), public class/level/XP/karma profiles, and an XP leaderboard. Chat, mugger contracts, PvP, co-op patrols, and real-world daily resets are planned *later*, not shipped in this version.
+Create a new account from the **Account** menu, or register after starting as a guest to attach your existing character. Use the username/password from another browser to resume the same campaign. Registered officers appear in **Online Precinct**, with an activity-based online indicator (last five minutes), public class/level/XP/karma profiles, and an XP leaderboard. Chat, mugger contracts, PvP, and co-op patrols are planned later. Real-world daily resets are implemented in v0.10.0.
 
 Only one Go process should write to the `-save-dir` at a time. SQLite stores credentials, account sessions and public profile indexes; per-account JSON save files still store full game state. Sessions expire after 30 days, sign-out invalidates the current browser, and no email/password recovery is included yet. If an officer is currently signed out, their online indicator turns off after five minutes. Account usernames are unique and case-insensitive.
 
-## What's in v0.9.0
+## What's in v0.10.0
 
 - Responsive neon BBS-style dashboard, without dependencies or external assets.
 - Three original classes and abilities: Robot (Charged Shot), Psychic (Psychic Blast), Psychopath (Chow Down).
@@ -64,6 +64,19 @@ Only one Go process should write to the `-save-dir` at a time. SQLite stores cre
 - Property room with activated temporary effects, no passive inventory buffs; medical treatment; night-life recovery; daily economy.
 - Per-browser-session JSON saved automatically to OS user configuration directory (`oppwars-web/saves`).
 - Server-side authority for game actions (the browser doesn't award itself money/XP).
+
+## v0.10.0 — 30 real-life UTC campaign days
+
+- Each new officer's campaign lasts **30 UTC calendar dates**, starting on the UTC date the officer is created. The 30th day remains playable until the next midnight; the campaign completes at the beginning of day 31.
+- **25 patrol turns** (or the existing infection-reduced amount) become available at **00:00 UTC** every real-world day. Officers cannot manually advance time or bank unspent turns.
+- **Clock Out** ends today's shift and awards its net wages exactly once; it cannot be used to jump to the next day. The officer is locked out of further game actions until midnight UTC.
+- Being defeated still forcibly ends the shift and restores HP to half the maximum, but **does not grant wages**. The campaign continues on the next real UTC date; even a day-30 defeat finishes only when that date expires.
+- Missing days causes calendar time to pass regardless of player activity. Unspent turns disappear and missed wages are not automatically awarded. Temporary buffs and unresolved encounters expire at the new UTC date; Psychic energy refills only then.
+- A Red Room visit still consumes one of the day's patrol turns. All other prices, experience, items, Paragon/Renegade and combat rules are unchanged.
+- The sidebar displays a **live countdown** to the next midnight UTC. Once the date changes, the browser refreshes the game state from the server. Server time is authoritative.
+- Prior v0.9 and earlier active saves adopt the real-world calendar on their first request, preserving the remaining days, current turns, cash, items, and progression. For example, a character with 17 days remaining keeps 17 real calendar dates.
+- Online accounts and guest saves both follow the same rules. The account and online precinct screens remain available after clocking out.
+- To avoid seasonal abuse, new campaigns restart from day 1 and replace the current officer as before. Permanent career records and seasons are a later milestone.
 
 ## v0.9.0 — shared online precinct and player accounts
 
