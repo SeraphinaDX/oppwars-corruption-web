@@ -75,7 +75,7 @@ type Game struct {
 	EndReason string     `json:"endReason,omitempty"`
 	CampaignStart string `json:"campaignStart,omitempty"` // Calendar date at 00:00 UTC
 	LastResetDate string `json:"lastResetDate,omitempty"`
-	ShiftEnded bool `json:"shiftEnded,omitempty"`
+	ShiftEnded bool `json:"shiftEnded"`
 }
 
 var enemies = []string{
