@@ -68,6 +68,13 @@ func (g *Game) syncCalendar(now time.Time) bool {
 		g.log(g.EndReason)
 		return true
 	}
+	// Do not move a campaign backwards if the system clock is corrected or
+	// a test injects an earlier timestamp after the last processed date.
+	if g.LastResetDate != "" {
+		lastDate, parseErr := parseUTCDate(g.LastResetDate)
+		if parseErr != nil {return false}
+		if today.Before(lastDate) {return false}
+	}
 	wantDays := campaignDays - elapsed
 	if g.Player.Days != wantDays {
 		g.Player.Days = wantDays
