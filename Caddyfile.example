@@ -1,0 +1,7 @@
+# Replace oppwars.example.com with your actual hostname.
+# Keep the Go server on 127.0.0.1, and start it with -secure-cookies.
+# Caddy handles TLS and forwards Host and X-Forwarded-* safely.
+oppwars.example.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8080
+}
