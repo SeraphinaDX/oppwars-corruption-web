@@ -51,3 +51,6 @@
 .presence.offline{color:#9eaec1}
 .shop-description .muted{font-size:12px;overflow-wrap:anywhere}
 @media (max-width:600px){.account-form{max-width:100%}.shop-item{gap:9px}}
+
+/* Real-world daily campaign countdown */
+.reset-countdown{font-size:10px;line-height:1.6;font-weight:700;letter-spacing:.5px;color:#8fd8ef;margin-top:8px;overflow-wrap:anywhere}

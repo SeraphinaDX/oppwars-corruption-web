@@ -23,7 +23,10 @@ func TestPsychicMeterDailyLimitAndRecharge(t *testing.T) {
  if g.Enemy.HP!=before {t.Fatal("rejected blast damaged enemy")}
  if err:=g.act("retreat","","");err!=nil {t.Fatal(err)}
  if err:=g.act("clockout","","");err!=nil {t.Fatal(err)}
- if g.Player.psychicLeft()!=300 {t.Fatal("meter didn't recharge")}
+ if g.Player.psychicLeft()!=0 || !g.ShiftEnded {t.Fatal("clockout must not recharge PSI before UTC reset")}
+ start,_:=parseUTCDate(g.CampaignStart)
+ g.syncCalendar(start.AddDate(0,0,1))
+ if g.Player.psychicLeft()!=300 || g.ShiftEnded {t.Fatal("new UTC day didn't recharge PSI")}
 }
 
 func TestRobotChargeResetsAfterShotAndCaps(t *testing.T) {

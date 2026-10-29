@@ -4,100 +4,104 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestCombatDefeatForcesNextShiftInsteadOfGameOver(t *testing.T) {
-	g := newGame()
-	if err := g.act("start", "Officer Dusk", "robot"); err != nil {
-		t.Fatal(err)
-	}
-	beforeCash := g.Player.Money
-	g.startEncounter()
-	enemyName := g.Enemy.Name
-	g.Enemy.HP = 99999 // Special cannot win the encounter.
-	g.Player.HP = 0 // Force the defeat branch without depending on random hits.
-	g.Player.Bumfights = 12
-	g.Player.CocaineEncounters = 2
-	g.Player.ClassPower = 4
-	if err := g.act("special", "", ""); err != nil {
-		t.Fatal(err)
-	}
-	p := g.Player
-	if g.Phase != "hq" || g.Enemy != nil || g.EndReason != "" {
-		t.Fatalf("defeat ended the campaign or retained enemy: %+v", g)
-	}
-	if p.Days != 29 || p.Bumfights != fightsPerDay {
-		t.Fatalf("defeat didn't end the shift: days=%d patrols=%d", p.Days, p.Bumfights)
-	}
-	if p.HP != p.maxHP()/2 || p.ClassPower != 1 {
-		t.Fatalf("hospital recovery/charge reset wrong: HP=%d power=%d", p.HP, p.ClassPower)
-	}
-	if p.Money != beforeCash || p.Experience != 0 || p.CocaineEncounters != 0 {
-		t.Fatalf("defeat improperly granted rewards or kept buffs: %+v", p)
-	}
-	if !strings.Contains(strings.Join(g.Messages, "\n"), "defeated by "+enemyName) ||
-		!strings.Contains(strings.Join(g.Messages, "\n"), "Forced clock-out") {
-		t.Fatalf("missing named defeat and forced clock-out messages: %v", g.Messages)
-	}
-	if err := g.act("patrol", "", ""); err != nil && g.Phase != "event" {
-		t.Fatalf("cannot continue the campaign after defeat: %v", err)
-	}
-}
-
-func TestCombatDefeatRefillsPsychicEnergyButKeepsInfections(t *testing.T) {
-	g := newGame()
-	if err := g.act("start", "Officer Psi", "psychic"); err != nil { t.Fatal(err) }
-	g.Player.Infections = 2
-	g.Player.HP = 0
-	noEnergy := 0
-	g.Player.PsychicEnergy = &noEnergy
-	g.startEncounter()
-	g.Enemy.HP = 99999
-	before := g.Player.Money
-	// Even a successful normal attack will not prevent defeat with 0 HP.
-	if err := g.act("fight", "", ""); err != nil { t.Fatal(err) }
-	if g.Phase != "hq" || g.Player.Days != 29 { t.Fatalf("wrong phase/day %+v", g) }
-	if g.Player.psychicLeft() != maxPsychicEnergy { t.Fatal("psychic meter not reset on new shift") }
-	if g.Player.Infections != 2 || g.Player.Bumfights != minInfectedPatrols {
-		t.Fatalf("defeat removed infection or bypassed patrol penalty: %+v", g.Player)
-	}
-	if g.Player.Money != before || g.Player.HP != g.Player.maxHP()/2 { t.Fatalf("wrong recovery: %+v", g.Player) }
-	if err := g.act("clockout", "", ""); err != nil { t.Fatal(err) }
-	if g.Player.Days != 28 || g.Player.Money != before+g.Player.shiftIncome() {
-		t.Fatalf("normal shift pay broken after defeat: %+v",g.Player)
-	}
-}
-
-func TestLastDayDefeatOnlyEndsCampaignNormally(t *testing.T) {
+func TestCombatDefeatEndsCurrentUTCShiftNotCampaign(t *testing.T) {
 	g:=newGame()
-	if err:=g.act("start","Officer Last","psychopath");err!=nil {t.Fatal(err)}
+	if err:=g.act("start","Officer Dusk","robot");err!=nil {t.Fatal(err)}
+	start,_:=parseUTCDate(g.CampaignStart)
+	beforeCash:=g.Player.Money
+	g.startEncounter()
+	enemy:=g.Enemy.Name
+	g.Enemy.HP=99999
+	g.Player.HP=0
+	g.Player.Bumfights=12
+	g.Player.CocaineEncounters=2
+	g.Player.ClassPower=4
+	if err:=g.act("special","","");err!=nil {t.Fatal(err)}
+	if g.Phase!="hq" || !g.ShiftEnded || g.Player.Days!=30 || g.Player.Bumfights!=0 ||
+		g.Enemy!=nil || g.EndReason!="" {
+		t.Fatalf("defeat must end current calendar shift, not campaign: %+v",g)
+	}
+	if g.Player.HP!=g.Player.maxHP()/2 || g.Player.ClassPower!=1 ||
+		g.Player.Money!=beforeCash || g.Player.Experience!=0 || g.Player.CocaineEncounters!=0 {
+		t.Fatalf("defeat recovery or forfeiture incorrect: %+v",g.Player)
+	}
+	if !logContains(g,"defeated by "+enemy) || !logContains(g,"Forced clock-out") {t.Fatal("missing defeat report")}
+	for _,action:=range []string{"patrol","clockout","buy_cocaine","nightlife","clinic"} {
+		if err:=g.actAt(action,"","",start.Add(12*time.Hour));err==nil {
+			t.Fatalf("allowed %s after losing shift",action)
+		}
+	}
+	if !g.syncCalendar(start.AddDate(0,0,1)) || g.ShiftEnded || g.Phase!="hq" ||
+		g.Player.Days!=29 || g.Player.Bumfights!=fightsPerDay {
+		t.Fatalf("next UTC day didn't restore playable patrols: %+v",g)
+	}
+	if g.Player.Money!=beforeCash {t.Fatal("defeat granted next day's salary")}
+}
+
+func TestCombatDefeatKeepsInfectionsAndRechargesPsychicOnNextDay(t *testing.T) {
+	g:=newGame()
+	if err:=g.act("start","Officer Psi","psychic");err!=nil {t.Fatal(err)}
+	start,_:=parseUTCDate(g.CampaignStart)
+	g.Player.Infections=2
+	g.Player.HP=0
+	zero:=0
+	g.Player.PsychicEnergy=&zero
+	g.startEncounter()
+	g.Enemy.HP=99999
+	before:=g.Player.Money
+	if err:=g.act("fight","","");err!=nil {t.Fatal(err)}
+	if g.Phase!="hq" || !g.ShiftEnded || g.Player.Days!=30 ||
+		g.Player.psychicLeft()!=0 || g.Player.Infections!=2 || g.Player.Bumfights!=0 {
+		t.Fatalf("defeat advanced psychic resources too soon: %+v",g)
+	}
+	if g.Player.Money!=before || g.Player.HP!=g.Player.maxHP()/2 {t.Fatal("defeat awarded cash or wrong HP")}
+	if err:=g.act("clockout","","");err==nil {t.Fatal("defeat let officer collect wages")}
+	g.syncCalendar(start.AddDate(0,0,1))
+	if g.Player.psychicLeft()!=maxPsychicEnergy || g.Player.Bumfights!=minInfectedPatrols ||
+		g.Player.Infections!=2 || g.Player.Days!=29 {
+		t.Fatalf("new day didn't recharge Psychic or preserve infection: %+v",g.Player)
+	}
+	if err:=g.actAt("clockout","","",start.AddDate(0,0,1).Add(time.Hour));err!=nil {t.Fatal(err)}
+	if g.Player.Money!=before+g.Player.shiftIncome() || !g.ShiftEnded {t.Fatal("normal next-day clockout failed")}
+}
+
+func TestLastDayDefeatCompletesOnlyAfterMidnight(t *testing.T) {
+	g:=newGame()
+	today:=utcDay(time.Now())
+	if err:=g.actAt("start","Officer Last","psychopath",today.Add(time.Hour));err!=nil {t.Fatal(err)}
+	g.CampaignStart=utcDate(today.AddDate(0,0,-29))
+	g.LastResetDate=utcDate(today)
 	g.Player.Days=1
 	g.Player.HP=0
 	g.startEncounter()
 	g.Enemy.HP=99999
-	if err:=g.act("fight","","");err!=nil {t.Fatal(err)}
-	if g.Phase!="gameover" || g.Player.Days!=0 {
-		t.Fatalf("final campaign day didn't complete normally: %+v",g)
+	if err:=g.actAt("fight","","",today.Add(2*time.Hour));err!=nil {t.Fatal(err)}
+	if g.Phase!="hq" || !g.ShiftEnded || g.Player.Days!=1 {
+		t.Fatalf("last-day defeat should only close shift: %+v",g)
 	}
-	if !strings.Contains(g.EndReason,"30-day tour") {
-		t.Fatalf("wrong end reason: %q",g.EndReason)
+	if g.syncCalendar(today.AddDate(0,0,1))==false || g.Phase!="gameover" || g.Player.Days!=0 ||
+		!strings.Contains(g.EndReason,"30 real-world days") {
+		t.Fatalf("campaign did not finish at end of day 30: %+v",g)
 	}
-	if err:=g.act("patrol","","");err==nil {t.Fatal("patrol allowed after campaign was completed")}
+	if err:=g.actAt("patrol","","",today.AddDate(0,0,1));err==nil {t.Fatal("gameover accepted patrol")}
 }
 
-func TestDepartmentAmbushDefeatAlsoEndsShift(t *testing.T) {
+func TestAmbushDefeatForfeitsOnlyTodaysShift(t *testing.T) {
 	g:=newGame()
 	if err:=g.act("start","Officer Ambush","robot");err!=nil {t.Fatal(err)}
-	g.Player.Days=13
 	g.Player.HP=0
 	g.startEncounter()
 	g.losePatrol("Captain Grimstead's ambush")
-	if g.Phase!="hq" || g.Enemy!=nil || g.Player.Days!=12 || g.Player.HP!=100 {
-		t.Fatalf("ambush defeat didn't advance to next shift: %+v",g)
+	if g.Phase!="hq" || !g.ShiftEnded || g.Enemy!=nil || g.Player.Days!=30 ||
+		g.Player.HP!=100 || g.Player.Bumfights!=0 {
+		t.Fatalf("ambush defeat should lock today's shift: %+v",g)
 	}
 }
 
-func TestDefeatStateSurvivesSaveReload(t *testing.T) {
+func TestDefeatShiftLockPersistsAcrossSaveReload(t *testing.T) {
 	g:=newGame()
 	if err:=g.act("start","Officer Persist","robot");err!=nil {t.Fatal(err)}
 	g.startEncounter()
@@ -105,9 +109,10 @@ func TestDefeatStateSurvivesSaveReload(t *testing.T) {
 	g.Player.HP=0
 	if err:=g.act("special","","");err!=nil {t.Fatal(err)}
 	raw,err:=json.Marshal(g);if err!=nil {t.Fatal(err)}
-	var reload Game
-	if err:=json.Unmarshal(raw,&reload);err!=nil {t.Fatal(err)}
-	if !validGame(&reload) || reload.Phase!="hq" || reload.Player.Days!=29 || reload.Player.HP!=100 {
-		t.Fatalf("loss doesn't persist playable state: %+v",reload)
+	var saved Game
+	if err:=json.Unmarshal(raw,&saved);err!=nil {t.Fatal(err)}
+	if !validGame(&saved) || !saved.ShiftEnded || saved.Phase!="hq" || saved.Player.Days!=30 ||
+		saved.Player.HP!=100 || saved.Player.Bumfights!=0 {
+		t.Fatalf("defeat lock didn't persist: %+v",saved)
 	}
 }

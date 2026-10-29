@@ -3,4 +3,4 @@ package main
 
 // gameVersion is the one release identifier used by the server and web UI.
 // Bump this for every new release; document the change in README.md.
-const gameVersion = "0.9.0"
+const gameVersion = "0.10.0"

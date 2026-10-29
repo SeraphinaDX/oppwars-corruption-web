@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -72,6 +73,9 @@ type Game struct {
 	Messages  []string   `json:"messages"`
 	Turn      int        `json:"turn"`
 	EndReason string     `json:"endReason,omitempty"`
+	CampaignStart string `json:"campaignStart,omitempty"` // Calendar date at 00:00 UTC
+	LastResetDate string `json:"lastResetDate,omitempty"`
+	ShiftEnded bool `json:"shiftEnded"`
 }
 
 var enemies = []string{
@@ -102,7 +106,17 @@ func (g *Game) log(msg string) {
 }
 
 func (g *Game) act(action, name, class string) error {
+	return g.actAt(action, name, class, time.Now())
+}
+
+// actAt is the authoritative action entry point with injectable server time.
+// The calendar is synchronized first, so stale sessions cannot act yesterday.
+func (g *Game) actAt(action, name, class string, now time.Time) error {
+	g.syncCalendar(now)
 	if action == "reset" {
+		if g.Phase != "gameover" && g.Phase != "setup" {
+			return errors.New("your 30 real-world duty days must finish before starting a new campaign")
+		}
 		*g = *newGame()
 		return nil
 	}
@@ -117,7 +131,10 @@ func (g *Game) act(action, name, class string) error {
 		if class != "robot" && class != "psychic" && class != "psychopath" {
 			return errors.New("choose a class")
 		}
-		g.Player = Player{Name: name, Class: class, HP: starterHP, Attack: 40, Money: starterMoney, Days: 30, Level: 1, Bumfights: fightsPerDay, ClassPower: 1}
+		g.Player = Player{Name: name, Class: class, HP: starterHP, Attack: 40, Money: starterMoney, Days: campaignDays, Level: 1, Bumfights: fightsPerDay, ClassPower: 1}
+		g.CampaignStart = utcDate(now)
+		g.LastResetDate = utcDate(now)
+		g.ShiftEnded = false
 		if class == "psychic" {
 			g.Player.refillPsychicEnergy()
 		}
@@ -127,6 +144,9 @@ func (g *Game) act(action, name, class string) error {
 	}
 	if g.Phase == "gameover" {
 		return errors.New("campaign ended — begin a new game")
+	}
+	if g.ShiftEnded {
+		return errors.New("shift ended — return after midnight UTC for the next day's patrol turns")
 	}
 	p := &g.Player
 	switch g.Phase {
@@ -231,7 +251,7 @@ func (g *Game) act(action, name, class string) error {
 			g.log(fmt.Sprintf("The doctor clears %s for duty: %d infection(s) treated for $%d.", p.Name, cured, cost))
 			return nil
 		case "clockout":
-			g.advanceShift(false)
+			g.endShift(false)
 			return nil
 		default:
 			return errors.New("action unavailable at HQ")
@@ -454,50 +474,13 @@ func (g *Game) finishCombat(arrested bool) {
 	}
 }
 
-// advanceShift completes a shift. A defeat forfeits the day's remaining patrols
-// and earnings but is not a campaign-ending condition. Hospital recovery restores
-// half of maximum HP, so the officer is playable on the following day.
-// Normal clock-out retains the original income and HP rules.
-func (g *Game) advanceShift(defeated bool) {
-	p := &g.Player
-	if defeated {
-		p.HP = max(1, p.maxHP()/2)
-		g.Enemy = nil
-		g.Event = nil
-		p.ClassPower = 1
-	}
-	if p.Days <= 1 {
-		p.Days = 0
-		g.Phase = "gameover"
-		g.EndReason = "Your 30-day tour of duty is complete. Retirement is probably safer."
-		g.log(g.EndReason)
-		return
-	}
-	p.Days--
-	if p.Class == "psychic" {
-		p.refillPsychicEnergy()
-		g.log(fmt.Sprintf("Psychic meter recharged: %d blasts available for the new shift.", maxPsychicEnergy/psychicBlastCost))
-	}
-	if p.clearEffects() {
-		g.log("End of shift: all temporary effects have worn off.")
-	}
-	p.Bumfights = p.shiftPatrols()
-	g.Phase = "hq"
-	if defeated {
-		g.log(fmt.Sprintf("Forced clock-out: %s returns next shift with %d HP. Remaining patrols and shift pay forfeited. %d days remaining.", p.Name, p.HP, p.Days))
-		return
-	}
-	income := p.shiftIncome()
-	p.Money += income
-	g.log(fmt.Sprintf("New shift: +$%d net income. %d days remaining.", income, p.Days))
-}
 
 // losePatrol handles both ordinary enemy defeats and lethal department ambushes.
 // The campaign only ends when the 30-day tour reaches its natural last shift.
 func (g *Game) losePatrol(opponent string) {
 	g.Player.HP = 0
 	g.log(fmt.Sprintf("%s was defeated by %s and taken to the medical wing.", g.Player.Name, opponent))
-	g.advanceShift(true)
+	g.endShift(true)
 }
 
 func (g *Game) startEncounter() {
