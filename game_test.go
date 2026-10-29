@@ -22,8 +22,12 @@ func TestStartupAndClassValidation(t *testing.T) {
 	if err := g.act("start", "again", "robot"); err == nil {
 		t.Fatal("allowed resetting class without reset")
 	}
+	if err := g.act("reset", "", ""); err == nil {
+		t.Fatal("reset allowed during a real-world campaign")
+	}
+	g.Phase = "gameover" // Simulate the end of a completed calendar campaign.
 	if err := g.act("reset", "", ""); err != nil || g.Phase != "setup" {
-		t.Fatal("reset failed", err)
+		t.Fatal("reset after completed campaign failed", err)
 	}
 	if err := g.act("start", "\x00", "robot"); err == nil {
 		t.Fatal("accepted control character")
