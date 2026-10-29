@@ -13,16 +13,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Resolve dependencies
-        run: go mod tidy
-      - name: Show resolved module files (temporary for dependency lockfile)
-        run: |
-          echo '=== RESOLVED GO MOD BEGIN ==='
-          cat go.mod
-          echo '=== RESOLVED GO MOD END ==='
-          echo '=== RESOLVED GO SUM BEGIN ==='
-          cat go.sum
-          echo '=== RESOLVED GO SUM END ==='
       - name: Test
         run: go test ./...
       - name: Race detector
