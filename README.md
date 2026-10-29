@@ -76,7 +76,7 @@ Only one Go process should write to the `-save-dir` at a time. SQLite stores cre
 - The sidebar displays a **live countdown** to the next midnight UTC. Once the date changes, the browser refreshes the game state from the server. Server time is authoritative.
 - Prior v0.9 and earlier active saves adopt the real-world calendar on their first request, preserving the remaining days, current turns, cash, items, and progression. For example, a character with 17 days remaining keeps 17 real calendar dates.
 - Online accounts and guest saves both follow the same rules. The account and online precinct screens remain available after clocking out.
-- To avoid seasonal abuse, new campaigns restart from day 1 and replace the current officer as before. Permanent career records and seasons are a later milestone.
+- To prevent infinite daily turns or starter-cash farming, officers **cannot reset an active 30-day campaign**. After its last UTC day finishes, they can start a new campaign. Permanent career records and seasons are a later milestone.
 
 ## v0.9.0 — shared online precinct and player accounts
 
