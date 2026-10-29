@@ -64,15 +64,26 @@ func TestShopAndClockOut(t *testing.T) {
 	if err := g.act("clockout", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if g.Player.Money != oldCash+500+500-2*infectionIncomeLoss || g.Player.Bumfights != minInfectedPatrols || g.Player.Days != 29 {
-		t.Fatal("clockout results wrong", g.Player)
+	if g.Player.Money != oldCash+500+500-2*infectionIncomeLoss || g.Player.Bumfights != 0 || g.Player.Days != 30 || !g.ShiftEnded {
+		t.Fatal("clockout should pay once and lock today's shift", g.Player)
 	}
-	g.Player.Days = 1
-	if err := g.act("clockout", "", ""); err != nil || g.Phase != "gameover" {
-		t.Fatal("campaign did not end")
+	if err := g.act("clockout", "", ""); err == nil {
+		t.Fatal("second clockout awarded duplicate pay")
 	}
 	if err := g.act("buy_lsd", "", ""); err == nil {
-		t.Fatal("shop available after ending")
+		t.Fatal("shop available after clockout")
+	}
+	start,_:=parseUTCDate(g.CampaignStart)
+	if !g.syncCalendar(start.AddDate(0,0,1)) || g.ShiftEnded ||
+		g.Player.Days!=29 || g.Player.Bumfights!=minInfectedPatrols {
+		t.Fatal("next UTC day did not restore injured officer patrols",g.Player)
+	}
+	if g.Player.Money!=oldCash+500+500-2*infectionIncomeLoss {
+		t.Fatal("new UTC day duplicated income")
+	}
+	g.syncCalendar(start.AddDate(0,0,30))
+	if g.Phase!="gameover" || g.Player.Days!=0 {
+		t.Fatal("30-day real-life campaign did not end")
 	}
 }
 
