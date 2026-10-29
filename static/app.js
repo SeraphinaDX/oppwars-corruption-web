@@ -1,6 +1,6 @@
 'use strict';
 // OPP Wars Web: The Go backend owns all game state. JavaScript only renders it.
-const state = { game: null, panel: 'patrol', picked: 'psychic', busy: false };
+const state = { game: null, panel: 'patrol', picked: 'psychic', busy: false, auth: null, precinct: null, viewingOfficer: null };
 const el = id => document.getElementById(id);
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n || 0).toLocaleString();
@@ -103,20 +103,100 @@ function recordPage(g) {
    card('INVENTORY',row('Cocaine',p.cocaine)+row('Fentanyl',p.fentanyl)+row('LSD',p.lsd)+row('Condoms',p.condoms)+row('Hand cuffs',p.handcuffs||0)+row('Club shares',p.clubShares)+row('Active status',activeEffect(p)?.[0]||'None')+row('Status encounters left',activeEffect(p)?.[1]||0))+
    card('PERSONNEL ACTIONS',`<p>Starting a new campaign replaces this browser session's current save.</p><div class="buttons">${actionButton('reset','↻ NEW GAME','alert full')}</div>`)+reports(g);
 }
+function authPage() {
+ const username=state.auth?.username;
+ if(username) return heading('◈ ACCOUNT / SIGNED IN','Officer account','Your character is bound to this persistent online account.')+
+  card('ACCOUNT STATUS',row('Username',username)+row('Game save','Stored under your account')+
+   `<div class="buttons"><button class="btn full" data-logout="true">SIGN OUT</button></div><p class="hint">Signing out leaves your officer saved on the server. Sign in from another browser to resume.</p>`);
+ return heading('◈ PRECINCT / ACCESS CONTROL','Join the online precinct','Create an account to keep your officer and appear to other players.')+
+  card('CREATE ACCOUNT',`<form class="account-form" data-auth-form="register"><label class="field">USERNAME<input name="username" required minlength="3" maxlength="24" pattern="[A-Za-z][A-Za-z0-9_]{2,23}" autocomplete="username" placeholder="Officer handle"></label><label class="field">PASSWORD<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" placeholder="At least 12 characters"></label><button class="btn primary full" type="submit">CREATE ACCOUNT & SAVE OFFICER</button></form><p class="hint">Your current guest campaign becomes your account's officer. Usernames cannot be changed yet.</p>`)+
+  card('RETURNING OFFICER',`<form class="account-form" data-auth-form="login"><label class="field">USERNAME<input name="username" required autocomplete="username"></label><label class="field">PASSWORD<input name="password" type="password" required autocomplete="current-password"></label><button class="btn cyan full" type="submit">SIGN IN</button></form><p class="hint">Sign in to retrieve your existing character. A guest save in this browser will not be merged into an existing account.</p>`);
+}
+const officerDisplay = p => `<span class="presence ${p.online?'online':'offline'}">${p.online?'● ONLINE':'○ OFFLINE'}</span> <strong>${escapeHTML(p.username)}</strong> <span class="muted">${escapeHTML(p.officerName || 'Unassigned')} • ${escapeHTML(p.class || 'Recruit')} Lv. ${fmt(p.level)}</span>`;
+function precinctPage(g) {
+ if(!state.auth?.authenticated) return heading('◈ DISTRICT / SHARED PRECINCT','Online precinct','The doors are open to registered officers.')+
+   card('ACCOUNT REQUIRED',`<p>Register or sign in to see who is on duty, inspect officer profiles and compare experience rankings.</p><div class="buttons"><button class="btn primary full" data-panel="account">◈ OPEN ACCOUNT TERMINAL</button></div>`);
+ if(state.viewingOfficer){
+  const p=state.viewingOfficer;
+  return heading('◈ PRECINCT / PERSONNEL','Public officer file','Available to everyone signed into the precinct.')+
+   card('OFFICER PROFILE',row('Account',p.username)+row('Officer',p.officerName||'Unassigned')+row('Status',p.online?'Online':'Offline')+row('Class',p.class||'Recruit')+row('Level',p.level)+row('Experience',fmt(p.experience))+row('Paragon',p.paragon)+row('Renegade',p.renegade))+
+   `<div class="buttons"><button class="btn primary full" data-roster="true">↳ BACK TO PRECINCT</button></div>`;
+ }
+ const data=state.precinct;
+ if(!data)return heading('◈ PRECINCT / CONNECTION','Shared precinct','Contacting dispatch for a roster update…');
+ const officers=(data.roster||[]).map(p=>`<div class="shop-item"><div class="shop-description">${officerDisplay(p)}</div><button class="btn small" data-officer="${escapeHTML(p.username)}">PROFILE</button></div>`).join('');
+ const rankings=(data.leaderboard||[]).map((p,i)=>`<div class="shop-item"><div class="shop-description"><b>#${i+1} ${escapeHTML(p.username)}</b><span class="hint">${escapeHTML(p.officerName||'Recruit')} • Lv. ${fmt(p.level)} • ${fmt(p.experience)} XP</span></div><button class="btn small" data-officer="${escapeHTML(p.username)}">PROFILE</button></div>`).join('');
+ return heading('◈ OPERATIONS / ONLINE PRECINCT','Shared online precinct','The city has other officers on duty. That should worry everybody.')+
+  card('ON-DUTY ROSTER',officers||'<p class="hint">Nobody else has checked in recently.</p>')+
+  card('EXPERIENCE LEADERBOARD',rankings||'<p class="hint">No ranked officers yet.</p>')+
+  `<div class="buttons"><button class="btn cyan full" data-refresh-precinct="true">⟳ REFRESH PRECINCT</button></div>`;
+}
+async function loadPrecinct(){
+ if(!state.auth?.authenticated)return;
+ try{
+  const response=await fetch('/api/precinct',{cache:'no-store'});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'Precinct unavailable');
+  state.precinct=data; if(state.panel==='precinct')render();
+ }catch(e){toast(e.message)}
+}
+async function accountSubmit(mode,username,password){
+ if(state.busy)return;
+ state.busy=true;
+ try{
+  const response=await fetch('/api/auth/'+mode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'Authentication failed');
+  state.auth=data;
+  const gameResponse=await fetch('/api/state',{cache:'no-store'});
+  if(!gameResponse.ok)throw Error('Could not retrieve officer');
+  state.game=await gameResponse.json();
+  state.viewingOfficer=null;state.precinct=null;
+  state.panel=state.game.phase==='hq'?'precinct':'patrol';
+  render();
+  if(state.panel==='precinct')await loadPrecinct();
+ }catch(e){toast(e.message)}
+ finally{state.busy=false}
+}
+async function logout(){
+ if(state.busy)return;
+ state.busy=true;
+ try {
+  const res=await fetch('/api/auth/logout',{method:'POST'});
+  if(!res.ok)throw Error('Could not sign out');
+  state.auth={authenticated:false,username:''};
+  state.precinct=null;state.viewingOfficer=null;
+  const game=await fetch('/api/state',{cache:'no-store'});
+  if(!game.ok)throw Error('Could not load guest game');
+  state.game=await game.json();state.panel='patrol';render();
+ }catch(e){toast(e.message)}
+ finally{state.busy=false}
+}
+async function showOfficer(username){
+ try{
+  const res=await fetch('/api/officers/'+encodeURIComponent(username),{cache:'no-store'});
+  const data=await res.json();
+  if(!res.ok)throw Error(data.error||'Officer not found');
+  state.viewingOfficer=data;state.panel='precinct';render();
+ }catch(e){toast(e.message)}
+}
+
 const pHasLSD = g => g.phase!=='setup' && g.player.lsdEncounters>0;
 function render() {
  const g=state.game;
  if(!g) return;
  el('game-version').textContent=`• v${g.version || 'unknown'}`;
  let page;
- if(g.phase==='setup') page=setupPage();
+ if((g.phase==='hq'||g.phase==='setup')&&state.panel==='account') page=authPage();
+ else if((g.phase==='hq'||g.phase==='setup')&&state.panel==='precinct') page=precinctPage(g);
+ else if(g.phase==='setup') page=setupPage();
  else if(g.phase==='redroom_result') page=redRoomResultPage(g);
  else if(g.phase!=='hq') page=patrolPage(g);
  else page=({patrol:patrolPage,hq:hqPage,property:propertyPage,nightlife:nightlifePage,doctor:doctorPage,record:recordPage}[state.panel] || patrolPage)(g);
  el('content').innerHTML=page;
  el('app').classList.toggle('lsd-active',pHasLSD(g));
  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.panel===state.panel));
- document.querySelectorAll('.nav-btn').forEach(b=>b.disabled=g.phase!=='hq');
+ document.querySelectorAll('.nav-btn').forEach(b=>b.disabled=g.phase!=='hq' && !(g.phase==='setup'&&['account','precinct','patrol'].includes(b.dataset.panel)));
  const p=g.player;
  el('officer-name').textContent=p.name || 'UNASSIGNED';
  el('officer-class').textContent=p.class ? `${p.class.toUpperCase()} // LEVEL ${p.level}` : 'CLASS NOT SELECTED';
@@ -145,12 +225,29 @@ async function request(action,name='',officerClass=''){
 }
 document.addEventListener('click',e=>{
  const cls=e.target.closest('[data-class]');if(cls){state.picked=cls.dataset.class;const name=el('new-name')?.value;render();if(el('new-name'))el('new-name').value=name||'';return}
- const nav=e.target.closest('[data-panel]');if(nav && state.game?.phase==='hq'){state.panel=nav.dataset.panel;render();return}
+ const nav=e.target.closest('[data-panel]');if(nav && ['hq','setup'].includes(state.game?.phase)){
+  state.panel=nav.dataset.panel;state.viewingOfficer=null;render();
+  if(state.panel==='precinct')loadPrecinct();
+  return
+ }
+ const officer=e.target.closest('[data-officer]');if(officer){showOfficer(officer.dataset.officer);return}
+ if(e.target.closest('[data-roster]')){state.viewingOfficer=null;render();return}
+ if(e.target.closest('[data-refresh-precinct]')){loadPrecinct();return}
+ if(e.target.closest('[data-logout]')){logout();return}
  const btn=e.target.closest('[data-action]');if(!btn)return;
  if(btn.dataset.action==='reset'&&!confirm('Replace this browser session save with a new game?'))return;
  request(btn.dataset.action,btn.dataset.action==='start'?(el('new-name')?.value||''):'',state.picked);
 });
+document.addEventListener('submit',e=>{
+ const form=e.target.closest('[data-auth-form]');
+ if(!form)return;
+ e.preventDefault();
+ accountSubmit(form.dataset.authForm,form.elements.username.value,form.elements.password.value);
+});
+setInterval(()=>{if(state.auth?.authenticated&&state.panel==='precinct'&&!state.viewingOfficer)loadPrecinct()},30000);
 (async()=>{
- try{const res=await fetch('/api/state',{cache:'no-store'});if(!res.ok)throw Error('Cannot connect to OPP Wars server');state.game=await res.json();render()}
+ try{const [res,auth]=await Promise.all([
+  fetch('/api/state',{cache:'no-store'}),fetch('/api/auth',{cache:'no-store'})
+ ]);if(!res.ok||!auth.ok)throw Error('Cannot connect to OPP Wars server');state.game=await res.json();state.auth=await auth.json();render()}
  catch(e){el('content').innerHTML=heading('◈ OFFLINE','Connection failed','The server did not answer. Reload after starting the Go application.');toast(e.message)}
 })();

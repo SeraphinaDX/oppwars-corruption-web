@@ -3,6 +3,7 @@ package main
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -33,13 +34,19 @@ type server struct {
 	mu       sync.Mutex
 	sessions map[string]*entry
 	saveDir  string
+	db       *sql.DB
+	secureCookies bool
+	attemptMu sync.Mutex
+	attempts map[string]loginWindow
 }
 
 func newServer(saveDir string) (*server, error) {
 	if err := os.MkdirAll(saveDir, 0700); err != nil {
 		return nil, err
 	}
-	return &server{saveDir: saveDir, sessions: make(map[string]*entry)}, nil
+	db,err:=initAccounts(saveDir)
+	if err!=nil {return nil,err}
+	return &server{saveDir: saveDir, db: db, sessions: make(map[string]*entry),attempts:make(map[string]loginWindow)}, nil
 }
 func randomID() (string, error) {
 	raw := make([]byte, 32)
@@ -64,6 +71,11 @@ func (s *server) getSession(w http.ResponseWriter, r *http.Request) (string, *en
 	id := ""
 	if err == nil && validID(cookie.Value) {
 		id = cookie.Value
+		// Registered players share the canonical account save across browsers.
+		// Cookie tokens are stored hashed and cannot select arbitrary save files.
+		if accountID,_:=s.identity(r);accountID!="" {
+			id="account-"+accountID
+		}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -103,7 +115,7 @@ func (s *server) getSession(w http.ResponseWriter, r *http.Request) (string, *en
 		return "", nil, err
 	}
 	s.sessions[id] = e
-	http.SetCookie(w, &http.Cookie{Name: "oppwars_session", Value: id, Path: "/", MaxAge: 30 * 24 * 60 * 60, Secure: r.TLS != nil, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+	s.setAuthCookie(w,r,id,30*24*60*60)
 	return id, e, nil
 }
 func validGame(g *Game) bool {
@@ -165,6 +177,7 @@ func sameOrigin(r *http.Request) bool {
 }
 func (s *server) handler() http.Handler {
 	mux := http.NewServeMux()
+	s.authRoutes(mux)
 	mux.HandleFunc("GET /api/state", func(w http.ResponseWriter, r *http.Request) {
 		_, e, err := s.getSession(w, r)
 		if err != nil {
@@ -216,6 +229,11 @@ func (s *server) handler() http.Handler {
 			jsonReply(w, 500, map[string]string{"error": "could not save game"})
 			return
 		}
+		if accountID,_:=s.identity(r);accountID!="" {
+			if err:=s.updateOfficerProfile(accountID,e.game);err!=nil {
+				log.Printf("precinct profile sync failed: %v",err)
+			}
+		}
 		jsonReply(w, 200, e.game)
 	})
 	assets, _ := fs.Sub(embeddedAssets, "static")
@@ -231,6 +249,7 @@ func (s *server) handler() http.Handler {
 func main() {
 	addr := flag.String("listen", "127.0.0.1:8080", "HTTP listen address (localhost by default)")
 	saveDir := flag.String("save-dir", "", "directory for browser save games")
+	secureCookies := flag.Bool("secure-cookies", false, "mark cookies Secure when HTTPS is terminated by Caddy (recommended for public deployments)")
 	flag.Parse()
 	if *saveDir == "" {
 		dir, err := os.UserConfigDir()
@@ -243,6 +262,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer app.db.Close()
+	app.secureCookies=*secureCookies
 	httpServer := &http.Server{Addr: *addr, Handler: app.handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	fmt.Printf("OPP Wars Web Edition: http://%s\nSave games: %s\n", *addr, *saveDir)
 	log.Fatal(httpServer.ListenAndServe())

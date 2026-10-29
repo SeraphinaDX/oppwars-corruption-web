@@ -1,0 +1,10 @@
+# Local database and player save files — never commit account secrets.
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.db
+saves/
+*.test
+oppwars-web
+oppwars-web.exe
