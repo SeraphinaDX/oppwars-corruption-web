@@ -40,3 +40,14 @@
 .redroom-result p{line-height:1.75;color:#d5dfeb;margin:8px 0 16px}
 .redroom-result .row{max-width:480px}
 @media(max-width:620px){.redroom-result{padding:14px}.redroom-result h2{font-size:17px}}
+
+/* Multiplayer v0.9.0: compact account and officer roster controls */
+.account-form {display:grid;gap:14px;max-width:440px;margin:12px 0}
+.account-form .field{display:flex;flex-direction:column;gap:7px}
+.account-form input{width:100%;box-sizing:border-box;min-width:0}
+.account-form button{margin-top:5px}
+.presence{font-size:10px;font-weight:700;letter-spacing:.5px;margin-right:9px;white-space:nowrap}
+.presence.online{color:#6addab}
+.presence.offline{color:#9eaec1}
+.shop-description .muted{font-size:12px;overflow-wrap:anywhere}
+@media (max-width:600px){.account-form{max-width:100%}.shop-item{gap:9px}}
