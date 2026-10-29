@@ -216,8 +216,8 @@ function render() {
  if(!g) return;
  el('game-version').textContent=`• v${g.version || 'unknown'}`;
  let page;
- if((g.phase==='hq'||g.phase==='setup')&&state.panel==='account') page=authPage();
- else if((g.phase==='hq'||g.phase==='setup')&&state.panel==='precinct') page=precinctPage(g);
+ if(['hq','setup','gameover'].includes(g.phase)&&state.panel==='account') page=authPage();
+ else if(['hq','setup','gameover'].includes(g.phase)&&state.panel==='precinct') page=precinctPage(g);
  else if(g.phase==='hq'&&g.shiftEnded&&!['account','precinct','record'].includes(state.panel)) page=shiftDonePage(g);
  else if(g.phase==='setup') page=setupPage();
  else if(g.phase==='redroom_result') page=redRoomResultPage(g);
@@ -226,7 +226,7 @@ function render() {
  el('content').innerHTML=page;
  el('app').classList.toggle('lsd-active',pHasLSD(g));
  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.panel===state.panel));
- document.querySelectorAll('.nav-btn').forEach(b=>b.disabled=g.phase!=='hq' && !(g.phase==='setup'&&['account','precinct','patrol'].includes(b.dataset.panel)));
+ document.querySelectorAll('.nav-btn').forEach(b=>b.disabled=!(['hq'].includes(g.phase)||(['setup','gameover'].includes(g.phase)&&['account','precinct','patrol'].includes(b.dataset.panel))));
  const p=g.player;
  el('officer-name').textContent=p.name || 'UNASSIGNED';
  el('officer-class').textContent=p.class ? `${p.class.toUpperCase()} // LEVEL ${p.level}` : 'CLASS NOT SELECTED';
@@ -256,7 +256,7 @@ async function request(action,name='',officerClass=''){
 }
 document.addEventListener('click',e=>{
  const cls=e.target.closest('[data-class]');if(cls){state.picked=cls.dataset.class;const name=el('new-name')?.value;render();if(el('new-name'))el('new-name').value=name||'';return}
- const nav=e.target.closest('[data-panel]');if(nav && ['hq','setup'].includes(state.game?.phase)){
+ const nav=e.target.closest('[data-panel]');if(nav && ['hq','setup','gameover'].includes(state.game?.phase)){
   state.panel=nav.dataset.panel;state.viewingOfficer=null;render();
   if(state.panel==='precinct')loadPrecinct();
   return
