@@ -114,6 +114,9 @@ func (g *Game) act(action, name, class string) error {
 func (g *Game) actAt(action, name, class string, now time.Time) error {
 	g.syncCalendar(now)
 	if action == "reset" {
+		if g.Phase != "gameover" && g.Phase != "setup" {
+			return errors.New("your 30 real-world duty days must finish before starting a new campaign")
+		}
 		*g = *newGame()
 		return nil
 	}
