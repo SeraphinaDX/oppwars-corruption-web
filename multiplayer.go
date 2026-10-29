@@ -12,12 +12,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -58,6 +58,7 @@ func initAccounts(saveDir string) (*sql.DB,error) {
 	for _,statement:=range []string{
 		"PRAGMA journal_mode=WAL",
 		"PRAGMA busy_timeout=5000",
+		"PRAGMA foreign_keys=ON",
 		`CREATE TABLE IF NOT EXISTS accounts (
 			id TEXT PRIMARY KEY, username TEXT NOT NULL COLLATE NOCASE UNIQUE,
 			password_hash BLOB NOT NULL, joined_at INTEGER NOT NULL,
@@ -127,7 +128,7 @@ func parseCredentials(w http.ResponseWriter,r *http.Request) (string,string,erro
 	decoder:=json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err:=decoder.Decode(&input);err!=nil {return "","",errors.New("invalid credentials request")}
-	if err:=decoder.Decode(new(any));err==nil {return "","",errors.New("extra JSON values")}
+	if err:=decoder.Decode(new(any));err!=io.EOF {return "","",errors.New("extra or invalid JSON values")}
 	return strings.TrimSpace(input.Username),input.Password,nil
 }
 func validPassword(password string) bool {return len(password)>=12 && len(password)<=128}
@@ -273,5 +274,3 @@ func (s *server) authRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/officers/{username}",s.handleOfficer)
 }
 
-// Ensure only database-backed accounts are visible in the online precinct.
-var _ = sync.Mutex{}
