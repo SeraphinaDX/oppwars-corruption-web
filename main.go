@@ -36,8 +36,14 @@ type server struct {
 	saveDir  string
 	db       *sql.DB
 	secureCookies bool
+	clock func() time.Time
 	attemptMu sync.Mutex
 	attempts map[string]loginWindow
+}
+
+func (s *server) currentTime() time.Time {
+	if s.clock != nil {return s.clock().UTC()}
+	return time.Now().UTC()
 }
 
 func newServer(saveDir string) (*server, error) {
@@ -133,6 +139,12 @@ func validGame(g *Game) bool {
 	if g.Phase == "redroom_result" && g.RedRoom == nil {
 		return false
 	}
+	if (g.CampaignStart == "") != (g.LastResetDate == "") {return false}
+	if g.CampaignStart != "" {
+		start,e1:=parseUTCDate(g.CampaignStart)
+		last,e2:=parseUTCDate(g.LastResetDate)
+		if e1!=nil || e2!=nil || last.Before(start) {return false}
+	}
 	return true
 }
 func (s *server) save(id string, g *Game) error {
@@ -179,13 +191,19 @@ func (s *server) handler() http.Handler {
 	mux := http.NewServeMux()
 	s.authRoutes(mux)
 	mux.HandleFunc("GET /api/state", func(w http.ResponseWriter, r *http.Request) {
-		_, e, err := s.getSession(w, r)
+		id, e, err := s.getSession(w, r)
 		if err != nil {
 			jsonReply(w, 500, map[string]string{"error": "could not open save"})
 			return
 		}
 		e.mu.Lock()
 		defer e.mu.Unlock()
+		if e.game.syncCalendar(s.currentTime()) {
+			if err:=s.save(id,e.game);err!=nil {
+				jsonReply(w,500,map[string]string{"error":"could not save daily reset"})
+				return
+			}
+		}
 		jsonReply(w, 200, e.game)
 	})
 	mux.HandleFunc("POST /api/action", func(w http.ResponseWriter, r *http.Request) {
@@ -220,7 +238,14 @@ func (s *server) handler() http.Handler {
 		}
 		e.mu.Lock()
 		defer e.mu.Unlock()
-		if err := e.game.act(req.Action, req.Name, req.Class); err != nil {
+		now:=s.currentTime()
+		if e.game.syncCalendar(now) {
+			if err:=s.save(id,e.game);err!=nil {
+				jsonReply(w,500,map[string]string{"error":"could not save daily reset"})
+				return
+			}
+		}
+		if err := e.game.actAt(req.Action, req.Name, req.Class, now); err != nil {
 			jsonReply(w, 400, map[string]string{"error": err.Error()})
 			return
 		}
